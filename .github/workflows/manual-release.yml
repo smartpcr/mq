@@ -10,6 +10,9 @@ on:
         description: 'Optional release notes (Markdown).'
         required: false
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build, package, and create release
