@@ -62,6 +62,21 @@ public interface IQueueManager
     /// Gets queue metrics (ready count, in-flight count, etc.)
     /// </summary>
     Task<QueueMetrics> GetMetricsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all pending (ready state) messages
+    /// </summary>
+    Task<IEnumerable<MessageEnvelope>> GetPendingMessagesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets message count
+    /// </summary>
+    Task<int> GetCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a specific message by ID
+    /// </summary>
+    Task<MessageEnvelope?> GetMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -19,6 +19,7 @@ public class QueueManager : IQueueManager
     private readonly ICircularBuffer _buffer;
     private readonly DeduplicationIndex _deduplicationIndex;
     private readonly IPersister? _persister;
+    private readonly IDeadLetterQueue? _deadLetterQueue;
     private readonly QueueOptions _options;
     private long _sequenceNumber;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, string> _messageIdToDeduplicationKey;
@@ -30,16 +31,19 @@ public class QueueManager : IQueueManager
     /// <param name="deduplicationIndex">The deduplication index.</param>
     /// <param name="options">Queue configuration options.</param>
     /// <param name="persister">Optional persister for WAL and snapshots.</param>
+    /// <param name="deadLetterQueue">Optional dead-letter queue for failed messages.</param>
     public QueueManager(
         ICircularBuffer buffer,
         DeduplicationIndex deduplicationIndex,
         QueueOptions options,
-        IPersister persister = null)
+        IPersister persister = null,
+        IDeadLetterQueue deadLetterQueue = null)
     {
         _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         _deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _persister = persister;
+        _deadLetterQueue = deadLetterQueue;
         _sequenceNumber = 0;
         _messageIdToDeduplicationKey = new System.Collections.Concurrent.ConcurrentDictionary<Guid, string>();
     }
@@ -202,8 +206,29 @@ public class QueueManager : IQueueManager
         if (target.RetryCount >= target.MaxRetries)
         {
             // Move to dead letter queue
-            // This will be handled in Phase 5
-            throw new InvalidOperationException($"Message {messageId} has exceeded max retries.");
+            if (_deadLetterQueue != null)
+            {
+                var failureReason = exception != null
+                    ? $"Max retries exceeded: {exception.Message}"
+                    : "Max retries exceeded";
+
+                await _deadLetterQueue.AddAsync(target, failureReason, exception, cancellationToken);
+
+                // Remove from main queue by acknowledging
+                await _buffer.AcknowledgeAsync(messageId, cancellationToken);
+
+                // Remove from deduplication index
+                if (_messageIdToDeduplicationKey.TryRemove(messageId, out string? dedupKey))
+                {
+                    await _deduplicationIndex.RemoveAsync(dedupKey, cancellationToken);
+                }
+
+                return;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Message {messageId} has exceeded max retries.");
+            }
         }
 
         bool requeued = await _buffer.RequeueAsync(messageId, cancellationToken);
@@ -274,7 +299,7 @@ public class QueueManager : IQueueManager
 
         foreach (var msg in allMessages)
         {
-            if (msg.Status == MessageStatus.Ready)
+            if (msg.Status == MessageStatus.Ready || msg.Status == MessageStatus.InFlight)
             {
                 pending.Add(msg);
             }
