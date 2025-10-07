@@ -338,4 +338,66 @@ public class CircularBuffer : ICircularBuffer
 
         return Task.FromResult(false);
     }
+
+    /// <inheritdoc/>
+    public Task<bool> RestoreAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
+    {
+        if (envelope == null)
+            throw new ArgumentNullException(nameof(envelope));
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // DO NOT modify the envelope's status or lease - preserve as-is for recovery
+
+        // Try to find an empty slot
+        for (int attempt = 0; attempt < _capacity; attempt++)
+        {
+            long currentWrite = Interlocked.Read(ref _writePosition);
+            int slotIndex = (int)(currentWrite % _capacity);
+
+            // Try to claim this slot with CAS (null = empty slot)
+            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, null);
+
+            if (currentSlot == null)
+            {
+                // Successfully claimed an empty slot
+                Interlocked.Increment(ref _writePosition);
+                return Task.FromResult(true);
+            }
+
+            // If slot is occupied, try next position
+            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+        }
+
+        // Buffer is full - find a slot to overwrite (prefer empty or Completed messages)
+        for (int attempt = 0; attempt < _capacity; attempt++)
+        {
+            long currentWrite = Interlocked.Read(ref _writePosition);
+            int slotIndex = (int)(currentWrite % _capacity);
+
+            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], null, null);
+
+            // Prefer to overwrite Completed or null messages
+            if (currentSlot == null || currentSlot.Status == MessageStatus.Completed)
+            {
+                var replaced = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, currentSlot);
+                if (ReferenceEquals(replaced, currentSlot))
+                {
+                    Interlocked.Increment(ref _writePosition);
+                    return Task.FromResult(true);
+                }
+            }
+
+            // Try next slot
+            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+        }
+
+        // Last resort: overwrite at write position
+        long finalWrite = Interlocked.Read(ref _writePosition);
+        int finalSlot = (int)(finalWrite % _capacity);
+        Interlocked.Exchange(ref _slots[finalSlot], envelope);
+        Interlocked.Increment(ref _writePosition);
+
+        return Task.FromResult(true);
+    }
 }

@@ -364,6 +364,12 @@ public class QueueManager : IQueueManager
         }
     }
 
+    /// <inheritdoc/>
+    public void SetSequenceNumber(long sequenceNumber)
+    {
+        Interlocked.Exchange(ref _sequenceNumber, sequenceNumber);
+    }
+
     /// <summary>
     /// Creates a message envelope from a message object.
     /// </summary>
@@ -400,12 +406,24 @@ public class QueueManager : IQueueManager
     /// </summary>
     private async Task PersistOperationAsync(OperationCode opCode, MessageEnvelope envelope, CancellationToken cancellationToken)
     {
+        // For Enqueue and Replace operations, serialize the full envelope for recovery
+        // For other operations, just use the message payload (or empty JSON)
+        string payload;
+        if (opCode == OperationCode.Enqueue || opCode == OperationCode.Replace)
+        {
+            payload = JsonSerializer.Serialize(envelope);
+        }
+        else
+        {
+            payload = envelope.Payload ?? "{}";
+        }
+
         var record = new OperationRecord
         {
             SequenceNumber = Interlocked.Increment(ref _sequenceNumber),
             OperationCode = opCode,
             MessageId = envelope.MessageId,
-            Payload = envelope.Payload,
+            Payload = payload,
             Timestamp = DateTime.UtcNow,
             Checksum = 0 // Will be calculated by persister
         };

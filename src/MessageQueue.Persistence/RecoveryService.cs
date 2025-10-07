@@ -9,6 +9,7 @@ namespace MessageQueue.Persistence
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using MessageQueue.Core;
@@ -24,6 +25,7 @@ namespace MessageQueue.Persistence
         private readonly IPersister persister;
         private readonly ICircularBuffer buffer;
         private readonly DeduplicationIndex deduplicationIndex;
+        private readonly IQueueManager? queueManager;
 
         /// <summary>
         /// Initializes a new instance of RecoveryService.
@@ -31,14 +33,17 @@ namespace MessageQueue.Persistence
         /// <param name="persister">The persister instance.</param>
         /// <param name="buffer">The circular buffer to restore.</param>
         /// <param name="deduplicationIndex">The deduplication index to restore.</param>
+        /// <param name="queueManager">Optional queue manager for setting sequence numbers after recovery.</param>
         public RecoveryService(
             IPersister persister,
             ICircularBuffer buffer,
-            DeduplicationIndex deduplicationIndex)
+            DeduplicationIndex deduplicationIndex,
+            IQueueManager? queueManager = null)
         {
             this.persister = persister ?? throw new ArgumentNullException(nameof(persister));
             this.buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
             this.deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
+            this.queueManager = queueManager;
         }
 
         /// <summary>
@@ -63,10 +68,10 @@ namespace MessageQueue.Persistence
                     result.SnapshotVersion = snapshot.Version;
                     result.SnapshotLoaded = true;
 
-                    // Restore messages to buffer
+                    // Restore messages to buffer, preserving their original state
                     foreach (var message in snapshot.Messages)
                     {
-                        await this.buffer.EnqueueAsync(message, cancellationToken);
+                        await this.buffer.RestoreAsync(message, cancellationToken);
                         result.MessagesRestored++;
                     }
 
@@ -94,6 +99,15 @@ namespace MessageQueue.Persistence
                     result.LastVersion = Math.Max(result.LastVersion, operation.SequenceNumber);
                 }
 
+                // Rehydrate the sequence number in QueueManager to continue from where we left off
+                if (this.queueManager != null && result.LastVersion > 0)
+                {
+                    this.queueManager.SetSequenceNumber(result.LastVersion);
+                }
+
+                // Prune stale deduplication index entries after replay
+                await this.PruneStaleDeduplicationEntriesAsync(cancellationToken);
+
                 result.Success = true;
                 result.EndTime = DateTime.UtcNow;
             }
@@ -118,10 +132,23 @@ namespace MessageQueue.Persistence
             switch (operation.OperationCode)
             {
                 case OperationCode.Enqueue:
-                    // During recovery, enqueue operations restore messages
-                    // The payload should contain the full MessageEnvelope
-                    // For now, we skip re-enqueuing as the snapshot already contains messages
-                    // and we're primarily replaying state changes
+                    // Deserialize the full envelope from the payload and restore it
+                    if (!string.IsNullOrEmpty(operation.Payload))
+                    {
+                        try
+                        {
+                            var envelope = JsonSerializer.Deserialize<MessageEnvelope>(operation.Payload);
+                            if (envelope != null)
+                            {
+                                // Use RestoreAsync to preserve the original state
+                                await this.buffer.RestoreAsync(envelope, cancellationToken);
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // Skip malformed operations during recovery
+                        }
+                    }
                     break;
 
                 case OperationCode.Acknowledge:
@@ -137,8 +164,23 @@ namespace MessageQueue.Persistence
 
                 case OperationCode.Replace:
                     // Replace operation for deduplication
-                    // This is complex as it requires the full message envelope
-                    // For now, we'll skip as the snapshot should have the latest state
+                    // Deserialize the replacement envelope and apply the supersede logic
+                    if (!string.IsNullOrEmpty(operation.Payload))
+                    {
+                        try
+                        {
+                            var envelope = JsonSerializer.Deserialize<MessageEnvelope>(operation.Payload);
+                            if (envelope != null && !string.IsNullOrEmpty(envelope.DeduplicationKey))
+                            {
+                                // Mark old message as superseded and enqueue new one
+                                await this.buffer.ReplaceAsync(envelope, envelope.DeduplicationKey, cancellationToken);
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // Skip malformed operations during recovery
+                        }
+                    }
                     break;
 
                 case OperationCode.Checkout:
@@ -187,6 +229,50 @@ namespace MessageQueue.Persistence
             }
 
             return recovered;
+        }
+
+        /// <summary>
+        /// Prunes stale entries from the deduplication index.
+        /// Removes entries that point to messages no longer in the buffer or that have been completed/superseded.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task PruneStaleDeduplicationEntriesAsync(CancellationToken cancellationToken = default)
+        {
+            // Get all current messages in the buffer
+            var messages = await this.buffer.GetAllMessagesAsync(cancellationToken);
+
+            // Build a set of valid message IDs and their deduplication keys
+            var validMessageIds = new HashSet<Guid>();
+            var validDedupKeys = new HashSet<string>();
+
+            foreach (var message in messages)
+            {
+                // Only keep entries for Ready and InFlight messages
+                if (message.Status == MessageStatus.Ready || message.Status == MessageStatus.InFlight)
+                {
+                    validMessageIds.Add(message.MessageId);
+                    if (!string.IsNullOrEmpty(message.DeduplicationKey))
+                    {
+                        validDedupKeys.Add(message.DeduplicationKey);
+                    }
+                }
+            }
+
+            // Get current dedup index snapshot
+            var dedupSnapshot = await this.deduplicationIndex.GetSnapshotAsync(cancellationToken);
+
+            // Remove entries that don't correspond to valid messages
+            foreach (var kvp in dedupSnapshot)
+            {
+                var key = kvp.Key;
+                var messageId = kvp.Value;
+
+                // Remove if message ID doesn't exist in buffer or if the key is not in valid set
+                if (!validMessageIds.Contains(messageId) || !validDedupKeys.Contains(key))
+                {
+                    await this.deduplicationIndex.RemoveAsync(key, cancellationToken);
+                }
+            }
         }
     }
 

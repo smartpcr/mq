@@ -90,6 +90,12 @@ public interface IQueueManager
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task CheckAndCreateSnapshotAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets the sequence number for operations (used during recovery to resume from last persisted version)
+    /// </summary>
+    /// <param name="sequenceNumber">The sequence number to set</param>
+    void SetSequenceNumber(long sequenceNumber);
 }
 
 /// <summary>
