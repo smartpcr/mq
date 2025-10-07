@@ -116,7 +116,7 @@ public class QueueManager : IQueueManager
         if (string.IsNullOrWhiteSpace(handlerId))
             throw new ArgumentException("Handler ID cannot be null or whitespace.", nameof(handlerId));
 
-        var lease = leaseDuration ?? _options.DefaultTimeout;
+        var lease = leaseDuration == default(TimeSpan) ? _options.DefaultTimeout : leaseDuration;
         var messageType = typeof(T);
 
         var envelope = await _buffer.CheckoutAsync(messageType, handlerId, lease, cancellationToken);
@@ -355,7 +355,7 @@ public class QueueManager : IQueueManager
             DeduplicationKey = deduplicationKey,
             Status = MessageStatus.Ready,
             RetryCount = 0,
-            MaxRetries = 3, // Default, should come from handler options
+            MaxRetries = _options.DefaultMaxRetries,
             Lease = null,
             LastPersistedVersion = 0,
             Metadata = new MessageMetadata

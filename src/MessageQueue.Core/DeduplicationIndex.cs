@@ -61,12 +61,46 @@ public class DeduplicationIndex
     }
 
     /// <summary>
-    /// Updates the message ID for an existing deduplication key (supersede scenario).
+    /// Updates the message ID for an existing deduplication key (supersede scenario) with optimistic concurrency.
+    /// </summary>
+    /// <param name="key">The deduplication key.</param>
+    /// <param name="expectedOldMessageId">The expected current message ID (for optimistic concurrency).</param>
+    /// <param name="newMessageId">The new message ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if updated successfully; false if key doesn't exist or expectedOldMessageId doesn't match.</returns>
+    public Task<bool> UpdateAsync(string key, Guid expectedOldMessageId, Guid newMessageId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Deduplication key cannot be null or whitespace.", nameof(key));
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Optimistic concurrency: only update if the current value matches expected
+        bool updated = false;
+        _index.AddOrUpdate(
+            key,
+            newMessageId, // If key doesn't exist, add it (shouldn't happen in update scenario)
+            (k, currentValue) =>
+            {
+                if (currentValue == expectedOldMessageId)
+                {
+                    updated = true;
+                    return newMessageId;
+                }
+                // Current value doesn't match expected, don't update
+                return currentValue;
+            });
+
+        return Task.FromResult(updated);
+    }
+
+    /// <summary>
+    /// Updates the message ID for an existing deduplication key (supersede scenario) without concurrency check.
     /// </summary>
     /// <param name="key">The deduplication key.</param>
     /// <param name="newMessageId">The new message ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if updated successfully; false if key doesn't exist.</returns>
+    /// <returns>True if updated successfully.</returns>
     public Task<bool> UpdateAsync(string key, Guid newMessageId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -75,7 +109,7 @@ public class DeduplicationIndex
         cancellationToken.ThrowIfCancellationRequested();
 
         // AddOrUpdate returns the new value
-        var result = _index.AddOrUpdate(key, newMessageId, (k, old) => newMessageId);
+        _index.AddOrUpdate(key, newMessageId, (k, old) => newMessageId);
         return Task.FromResult(true);
     }
 

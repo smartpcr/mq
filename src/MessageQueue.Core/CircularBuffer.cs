@@ -184,7 +184,7 @@ public class CircularBuffer : ICircularBuffer
 
             if (existing != null &&
                 existing.DeduplicationKey == deduplicationKey &&
-                existing.Status == MessageStatus.InFlight)
+                (existing.Status == MessageStatus.InFlight || existing.Status == MessageStatus.Ready))
             {
                 // Mark existing as superseded
                 var superseded = new MessageEnvelope
@@ -213,7 +213,7 @@ public class CircularBuffer : ICircularBuffer
             }
         }
 
-        // No in-flight message found with this key
+        // No message found with this key in Ready or InFlight state
         return Task.FromResult(false);
     }
 

@@ -29,7 +29,7 @@ public class QueueManagerTests
     }
 
     [TestMethod]
-    public async Task EnqueueAsync_WithDeduplication_PreventsDoubleEnqueue()
+    public async Task EnqueueAsync_WithDeduplication_SupersedesReadyMessage()
     {
         // Arrange
         var queueManager = CreateQueueManager();
@@ -40,10 +40,10 @@ public class QueueManagerTests
         var messageId1 = await queueManager.EnqueueAsync(testMessage1, deduplicationKey: "dedup-1");
         var messageId2 = await queueManager.EnqueueAsync(testMessage2, deduplicationKey: "dedup-1");
 
-        // Assert
-        messageId1.Should().Be(messageId2);
+        // Assert - Second enqueue with same key should supersede the first (Ready) message
+        messageId1.Should().NotBe(messageId2); // Different message IDs because supersede creates new message
         var count = await queueManager.GetCountAsync();
-        count.Should().Be(1);
+        count.Should().Be(1); // Only the new message counts (superseded messages excluded from count)
     }
 
     [TestMethod]
@@ -209,8 +209,8 @@ public class QueueManagerTests
         var testMessage = new TestMessage { Id = 1, Name = "Test" };
         await queueManager.EnqueueAsync(testMessage);
 
-        // Checkout and requeue 3 times (max retries)
-        for (int i = 0; i < 3; i++)
+        // Checkout and requeue 5 times (DefaultMaxRetries from options)
+        for (int i = 0; i < 5; i++)
         {
             var checkedOut = await queueManager.CheckoutAsync<TestMessage>("worker-1");
             await queueManager.RequeueAsync(checkedOut!.MessageId);
