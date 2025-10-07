@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="CheckoutBenchmarks.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using MessageQueue.Core;
@@ -14,9 +20,9 @@ namespace MessageQueue.Performance.Tests;
 [RankColumn]
 public class CheckoutBenchmarks
 {
-    private IQueueManager _queueManager = null!;
-    private ICircularBuffer _buffer = null!;
-    private DeduplicationIndex _deduplicationIndex = null!;
+    private IQueueManager queueManager = null!;
+    private ICircularBuffer buffer = null!;
+    private DeduplicationIndex deduplicationIndex = null!;
 
     [Params(1000, 10000)]
     public int MessageCount { get; set; }
@@ -32,9 +38,9 @@ public class CheckoutBenchmarks
             DefaultTimeout = TimeSpan.FromMinutes(5)
         };
 
-        _buffer = new CircularBuffer(options.Capacity);
-        _deduplicationIndex = new DeduplicationIndex();
-        _queueManager = new QueueManager(_buffer, _deduplicationIndex, options);
+        this.buffer = new CircularBuffer(options.Capacity);
+        this.deduplicationIndex = new DeduplicationIndex();
+        this.queueManager = new QueueManager(this.buffer, this.deduplicationIndex, options);
     }
 
     [IterationSetup]
@@ -43,7 +49,7 @@ public class CheckoutBenchmarks
         // Populate queue with messages
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
+            await this.queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
         }
     }
 
@@ -52,10 +58,10 @@ public class CheckoutBenchmarks
     {
         for (int i = 0; i < MessageCount; i++)
         {
-            var message = await _queueManager.CheckoutAsync<TestMessage>("handler-1");
+            var message = await this.queueManager.CheckoutAsync<TestMessage>("handler-1");
             if (message != null)
             {
-                await _queueManager.AcknowledgeAsync(message.MessageId);
+                await this.queueManager.AcknowledgeAsync(message.MessageId);
             }
         }
     }
@@ -72,11 +78,11 @@ public class CheckoutBenchmarks
             {
                 while (true)
                 {
-                    var message = await _queueManager.CheckoutAsync<TestMessage>($"handler-{consumerId}");
+                    var message = await this.queueManager.CheckoutAsync<TestMessage>($"handler-{consumerId}");
                     if (message == null)
                         break;
 
-                    await _queueManager.AcknowledgeAsync(message.MessageId);
+                    await this.queueManager.AcknowledgeAsync(message.MessageId);
                 }
             }));
         }
@@ -89,12 +95,12 @@ public class CheckoutBenchmarks
     {
         for (int i = 0; i < Math.Min(MessageCount, 1000); i++)
         {
-            var message = await _queueManager.CheckoutAsync<TestMessage>("handler-1");
+            var message = await this.queueManager.CheckoutAsync<TestMessage>("handler-1");
             if (message != null)
             {
                 // Simulate processing with lease extension
-                await _queueManager.ExtendLeaseAsync(message.MessageId, TimeSpan.FromMinutes(1));
-                await _queueManager.AcknowledgeAsync(message.MessageId);
+                await this.queueManager.ExtendLeaseAsync(message.MessageId, TimeSpan.FromMinutes(1));
+                await this.queueManager.AcknowledgeAsync(message.MessageId);
             }
         }
     }

@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="AdminOperationsTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Integration.Tests.Phase6;
 
 using System;
@@ -15,12 +21,12 @@ using Microsoft.Extensions.DependencyInjection;
 [TestClass]
 public class AdminOperationsTests
 {
-    private IQueueManager _queueManager = null!;
-    private IHandlerDispatcher _dispatcher = null!;
-    private IDeadLetterQueue _dlq = null!;
-    private IQueueAdminApi _adminApi = null!;
-    private QueueOptions _options = null!;
-    private IServiceProvider _serviceProvider = null!;
+    private IQueueManager queueManager = null!;
+    private IHandlerDispatcher dispatcher = null!;
+    private IDeadLetterQueue dlq = null!;
+    private IQueueAdminApi adminApi = null!;
+    private QueueOptions options = null!;
+    private IServiceProvider serviceProvider = null!;
 
     [TestInitialize]
     public void Setup()
@@ -29,34 +35,34 @@ public class AdminOperationsTests
 
         var buffer = new CircularBuffer(100);
         var dedupIndex = new DeduplicationIndex();
-        _options = new QueueOptions
+        this.options = new QueueOptions
         {
             Capacity = 100,
             DefaultTimeout = TimeSpan.FromMinutes(5),
             DefaultMaxRetries = 3
         };
 
-        _queueManager = new QueueManager(buffer, dedupIndex, _options);
-        _dlq = new DeadLetterQueue(_queueManager, _options);
+        this.queueManager = new QueueManager(buffer, dedupIndex, this.options);
+        this.dlq = new DeadLetterQueue(this.queueManager, this.options);
 
-        services.AddSingleton<IQueueManager>(_queueManager);
+        services.AddSingleton<IQueueManager>(this.queueManager);
         services.AddScoped<IMessageHandler<TestMessage>, TestMessageHandler>();
 
-        _serviceProvider = services.BuildServiceProvider();
+        this.serviceProvider = services.BuildServiceProvider();
 
-        var registry = new HandlerRegistry(_serviceProvider);
+        var registry = new HandlerRegistry(this.serviceProvider);
         registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
-        _dispatcher = new HandlerDispatcher(_queueManager, registry, _serviceProvider.GetRequiredService<IServiceScopeFactory>());
-        _adminApi = new QueueAdminApi(_queueManager, _dispatcher, _dlq, null);
+        this.dispatcher = new HandlerDispatcher(this.queueManager, registry, this.serviceProvider.GetRequiredService<IServiceScopeFactory>());
+        this.adminApi = new QueueAdminApi(this.queueManager, this.dispatcher, this.dlq, null);
     }
 
     [TestCleanup]
     public async Task Cleanup()
     {
-        if (_dispatcher != null)
+        if (this.dispatcher != null)
         {
-            await _dispatcher.StopAsync();
+            await this.dispatcher.StopAsync();
         }
     }
 
@@ -64,11 +70,11 @@ public class AdminOperationsTests
     public async Task AdminApi_GetMetrics_ReturnsQueueMetrics()
     {
         // Arrange
-        await _queueManager.EnqueueAsync(new TestMessage { Id = 1 });
-        await _queueManager.EnqueueAsync(new TestMessage { Id = 2 });
+        await this.queueManager.EnqueueAsync(new TestMessage { Id = 1 });
+        await this.queueManager.EnqueueAsync(new TestMessage { Id = 2 });
 
         // Act
-        var metrics = await _adminApi.GetMetricsAsync();
+        var metrics = await this.adminApi.GetMetricsAsync();
 
         // Assert
         metrics.Should().NotBeNull();
@@ -80,7 +86,7 @@ public class AdminOperationsTests
     public async Task AdminApi_GetHandlerMetrics_ReturnsEmptyWhenNoProcessing()
     {
         // Act
-        var handlerMetrics = await _adminApi.GetHandlerMetricsAsync();
+        var handlerMetrics = await this.adminApi.GetHandlerMetricsAsync();
 
         // Assert
         handlerMetrics.Should().NotBeNull();
@@ -91,14 +97,14 @@ public class AdminOperationsTests
     public async Task AdminApi_ScaleHandler_ChangesWorkerCount()
     {
         // Arrange
-        await _dispatcher.StartAsync();
+        await this.dispatcher.StartAsync();
         await Task.Delay(100); // Let initial workers start
 
         // Act - Scale up
-        await _adminApi.ScaleHandlerAsync<TestMessage>(5);
+        await this.adminApi.ScaleHandlerAsync<TestMessage>(5);
         await Task.Delay(200);
 
-        var stats = await _dispatcher.GetStatisticsAsync(typeof(TestMessage));
+        var stats = await this.dispatcher.GetStatisticsAsync(typeof(TestMessage));
 
         // Assert
         stats.Should().NotBeNull();
@@ -119,16 +125,16 @@ public class AdminOperationsTests
             MaxRetries = 3
         };
 
-        await _dlq.AddAsync(envelope, "Max retries exceeded");
+        await this.dlq.AddAsync(envelope, "Max retries exceeded");
 
         // Act
-        await _adminApi.ReplayDeadLetterAsync(envelope.MessageId, resetRetryCount: true);
+        await this.adminApi.ReplayDeadLetterAsync(envelope.MessageId, resetRetryCount: true);
 
         // Assert
-        var dlqMessages = await _dlq.GetMessagesAsync();
+        var dlqMessages = await this.dlq.GetMessagesAsync();
         dlqMessages.Should().BeEmpty();
 
-        var queueCount = await _queueManager.GetCountAsync();
+        var queueCount = await this.queueManager.GetCountAsync();
         queueCount.Should().BeGreaterOrEqualTo(1);
     }
 
@@ -145,14 +151,14 @@ public class AdminOperationsTests
                 Payload = $"{{\"Id\":{i}}}",
                 Status = MessageStatus.DeadLetter
             };
-            await _dlq.AddAsync(envelope, $"Failed {i}");
+            await this.dlq.AddAsync(envelope, $"Failed {i}");
         }
 
         // Act
-        await _adminApi.PurgeDeadLetterQueueAsync();
+        await this.adminApi.PurgeDeadLetterQueueAsync();
 
         // Assert
-        var messages = await _dlq.GetMessagesAsync();
+        var messages = await this.dlq.GetMessagesAsync();
         messages.Should().BeEmpty();
     }
 
@@ -166,7 +172,7 @@ public class AdminOperationsTests
             MessageType = typeof(TestMessage).AssemblyQualifiedName!,
             Payload = "{\"Id\":1}"
         };
-        await _dlq.AddAsync(oldEnvelope, "Old failure");
+        await this.dlq.AddAsync(oldEnvelope, "Old failure");
 
         await Task.Delay(200);
 
@@ -177,13 +183,13 @@ public class AdminOperationsTests
             MessageType = typeof(TestMessage).AssemblyQualifiedName!,
             Payload = "{\"Id\":2}"
         };
-        await _dlq.AddAsync(newEnvelope, "New failure");
+        await this.dlq.AddAsync(newEnvelope, "New failure");
 
         // Act - Purge messages older than 100ms
-        await _adminApi.PurgeDeadLetterQueueAsync(TimeSpan.FromMilliseconds(100));
+        await this.adminApi.PurgeDeadLetterQueueAsync(TimeSpan.FromMilliseconds(100));
 
         // Assert
-        var remaining = await _dlq.GetMessagesAsync();
+        var remaining = await this.dlq.GetMessagesAsync();
         remaining.Should().HaveCount(1);
         remaining.Should().Contain(m => m.MessageId == newEnvelope.MessageId);
     }
@@ -192,7 +198,7 @@ public class AdminOperationsTests
     public async Task AdminApi_ReplayDeadLetter_NonExistent_ThrowsException()
     {
         // Act & Assert
-        var act = async () => await _adminApi.ReplayDeadLetterAsync(Guid.NewGuid());
+        var act = async () => await this.adminApi.ReplayDeadLetterAsync(Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -200,7 +206,7 @@ public class AdminOperationsTests
     public async Task AdminApi_WithNoPersistence_TriggerSnapshot_ThrowsException()
     {
         // Act & Assert
-        var act = async () => await _adminApi.TriggerSnapshotAsync();
+        var act = async () => await this.adminApi.TriggerSnapshotAsync();
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Persistence is not configured*");
     }
@@ -209,7 +215,7 @@ public class AdminOperationsTests
     public async Task AdminApi_WithNoDLQ_ReplayDeadLetter_ThrowsException()
     {
         // Arrange - Create admin API without DLQ
-        var adminApiNoDlq = new QueueAdminApi(_queueManager, _dispatcher, null, null);
+        var adminApiNoDlq = new QueueAdminApi(this.queueManager, this.dispatcher, null, null);
 
         // Act & Assert
         var act = async () => await adminApiNoDlq.ReplayDeadLetterAsync(Guid.NewGuid());

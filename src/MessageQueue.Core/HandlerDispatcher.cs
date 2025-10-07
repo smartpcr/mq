@@ -140,8 +140,8 @@ namespace MessageQueue.Core
                 {
                     MessageType = messageType,
                     ActiveWorkers = 0,
-                    TotalProcessed = 0,
-                    TotalFailed = 0,
+                    this.TotalProcessed = 0,
+                    this.TotalFailed = 0,
                     AverageExecutionTime = TimeSpan.Zero
                 });
             }
@@ -152,8 +152,8 @@ namespace MessageQueue.Core
             {
                 MessageType = messageType,
                 ActiveWorkers = activeWorkers,
-                TotalProcessed = handlerMetrics.TotalProcessed,
-                TotalFailed = handlerMetrics.TotalFailed,
+                this.TotalProcessed = handlerMetrics.TotalProcessed,
+                this.TotalFailed = handlerMetrics.TotalFailed,
                 AverageExecutionTime = handlerMetrics.GetAverageExecutionTime()
             });
         }
@@ -174,8 +174,8 @@ namespace MessageQueue.Core
                 {
                     MessageType = messageType.FullName ?? messageType.Name,
                     ActiveWorkers = activeWorkers,
-                    TotalProcessed = handlerMetrics.TotalProcessed,
-                    TotalFailed = handlerMetrics.TotalFailed,
+                    this.TotalProcessed = handlerMetrics.TotalProcessed,
+                    this.TotalFailed = handlerMetrics.TotalFailed,
                     AverageProcessingTimeMs = avgTime.TotalMilliseconds,
                     MessagesPerSecond = this.CalculateThroughput(handlerMetrics)
                 };

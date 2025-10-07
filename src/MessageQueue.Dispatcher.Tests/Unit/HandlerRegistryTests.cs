@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="HandlerRegistryTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Dispatcher.Tests.Unit;
 
 using System;
@@ -11,8 +17,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class HandlerRegistryTests
 {
-    private IServiceProvider _serviceProvider = null!;
-    private HandlerRegistry _registry = null!;
+    private IServiceProvider serviceProvider = null!;
+    private HandlerRegistry registry = null!;
 
     [TestInitialize]
     public void Setup()
@@ -20,24 +26,24 @@ public class HandlerRegistryTests
         var services = new ServiceCollection();
         services.AddTransient<TestMessageHandler>();
         services.AddTransient<AnotherTestMessageHandler>();
-        _serviceProvider = services.BuildServiceProvider();
-        _registry = new HandlerRegistry(_serviceProvider);
+        this.serviceProvider = services.BuildServiceProvider();
+        this.registry = new HandlerRegistry(this.serviceProvider);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
-        (_serviceProvider as IDisposable)?.Dispose();
+        (this.serviceProvider as IDisposable)?.Dispose();
     }
 
     [TestMethod]
     public void RegisterHandler_WithTypeParameters_RegistersSuccessfully()
     {
         // Act
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
         // Assert
-        var isRegistered = _registry.IsRegistered(typeof(TestMessage));
+        var isRegistered = this.registry.IsRegistered(typeof(TestMessage));
         isRegistered.Should().BeTrue();
     }
 
@@ -54,10 +60,10 @@ public class HandlerRegistryTests
         };
 
         // Act
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>(options);
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>(options);
 
         // Assert
-        var registration = _registry.GetRegistration(typeof(TestMessage));
+        var registration = this.registry.GetRegistration(typeof(TestMessage));
         registration.Should().NotBeNull();
         registration.Options.Should().Be(options);
     }
@@ -70,10 +76,10 @@ public class HandlerRegistryTests
             sp => new TestMessageHandler();
 
         // Act
-        _registry.RegisterHandler(factory);
+        this.registry.RegisterHandler(factory);
 
         // Assert
-        var isRegistered = _registry.IsRegistered(typeof(TestMessage));
+        var isRegistered = this.registry.IsRegistered(typeof(TestMessage));
         isRegistered.Should().BeTrue();
     }
 
@@ -81,10 +87,10 @@ public class HandlerRegistryTests
     public void GetRegistration_WhenRegistered_ReturnsRegistration()
     {
         // Arrange
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
         // Act
-        var registration = _registry.GetRegistration(typeof(TestMessage));
+        var registration = this.registry.GetRegistration(typeof(TestMessage));
 
         // Assert
         registration.Should().NotBeNull();
@@ -96,7 +102,7 @@ public class HandlerRegistryTests
     public void GetRegistration_WhenNotRegistered_ReturnsNull()
     {
         // Act
-        var registration = _registry.GetRegistration(typeof(TestMessage));
+        var registration = this.registry.GetRegistration(typeof(TestMessage));
 
         // Assert
         registration.Should().BeNull();
@@ -106,10 +112,10 @@ public class HandlerRegistryTests
     public void IsRegistered_WhenRegistered_ReturnsTrue()
     {
         // Arrange
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
         // Act
-        var isRegistered = _registry.IsRegistered(typeof(TestMessage));
+        var isRegistered = this.registry.IsRegistered(typeof(TestMessage));
 
         // Assert
         isRegistered.Should().BeTrue();
@@ -119,7 +125,7 @@ public class HandlerRegistryTests
     public void IsRegistered_WhenNotRegistered_ReturnsFalse()
     {
         // Act
-        var isRegistered = _registry.IsRegistered(typeof(TestMessage));
+        var isRegistered = this.registry.IsRegistered(typeof(TestMessage));
 
         // Assert
         isRegistered.Should().BeFalse();
@@ -129,11 +135,11 @@ public class HandlerRegistryTests
     public void GetRegisteredMessageTypes_ReturnsAllRegisteredTypes()
     {
         // Arrange
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
-        _registry.RegisterHandler<AnotherTestMessage, AnotherTestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<AnotherTestMessage, AnotherTestMessageHandler>();
 
         // Act
-        var messageTypes = _registry.GetRegisteredMessageTypes();
+        var messageTypes = this.registry.GetRegisteredMessageTypes();
 
         // Assert
         messageTypes.Should().Contain(typeof(TestMessage));
@@ -144,10 +150,10 @@ public class HandlerRegistryTests
     public void CreateHandler_WhenRegistered_CreatesHandlerInstance()
     {
         // Arrange
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
         // Act
-        var handler = _registry.CreateHandler(typeof(TestMessage));
+        var handler = this.registry.CreateHandler(typeof(TestMessage));
 
         // Assert
         handler.Should().NotBeNull();
@@ -158,7 +164,7 @@ public class HandlerRegistryTests
     public void CreateHandler_WhenNotRegistered_ThrowsException()
     {
         // Act & Assert
-        var act = () => _registry.CreateHandler(typeof(TestMessage));
+        var act = () => this.registry.CreateHandler(typeof(TestMessage));
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("No handler registered for message type: *TestMessage*");
     }
@@ -167,12 +173,12 @@ public class HandlerRegistryTests
     public void CreateScopedHandler_WithScope_CreatesHandlerInstance()
     {
         // Arrange
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = this.serviceProvider.CreateScope();
 
         // Act
-        var handler = _registry.CreateScopedHandler(typeof(TestMessage), scope);
+        var handler = this.registry.CreateScopedHandler(typeof(TestMessage), scope);
 
         // Assert
         handler.Should().NotBeNull();
@@ -183,10 +189,10 @@ public class HandlerRegistryTests
     public void CreateScopedHandler_WithNullScope_ThrowsException()
     {
         // Arrange
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>();
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>();
 
         // Act & Assert
-        var act = () => _registry.CreateScopedHandler(typeof(TestMessage), null);
+        var act = () => this.registry.CreateScopedHandler(typeof(TestMessage), null);
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -194,10 +200,10 @@ public class HandlerRegistryTests
     public void CreateScopedHandler_WhenNotRegistered_ThrowsException()
     {
         // Arrange
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = this.serviceProvider.CreateScope();
 
         // Act & Assert
-        var act = () => _registry.CreateScopedHandler(typeof(TestMessage), scope);
+        var act = () => this.registry.CreateScopedHandler(typeof(TestMessage), scope);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("No handler registered for message type: *TestMessage*");
     }
@@ -210,11 +216,11 @@ public class HandlerRegistryTests
         var options2 = new HandlerOptions<TestMessage> { MinParallelism = 5 };
 
         // Act
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>(options1);
-        _registry.RegisterHandler<TestMessage, TestMessageHandler>(options2);
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>(options1);
+        this.registry.RegisterHandler<TestMessage, TestMessageHandler>(options2);
 
         // Assert
-        var registration = _registry.GetRegistration(typeof(TestMessage));
+        var registration = this.registry.GetRegistration(typeof(TestMessage));
         registration.Options.Should().Be(options2);
     }
 

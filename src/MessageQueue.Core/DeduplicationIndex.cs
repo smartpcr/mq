@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="DeduplicationIndex.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core;
 
 using System;
@@ -11,14 +17,14 @@ using System.Threading.Tasks;
 /// </summary>
 public class DeduplicationIndex
 {
-    private readonly ConcurrentDictionary<string, Guid> _index;
+    private readonly ConcurrentDictionary<string, Guid> index;
 
     /// <summary>
     /// Initializes a new instance of the DeduplicationIndex.
     /// </summary>
     public DeduplicationIndex()
     {
-        _index = new ConcurrentDictionary<string, Guid>(StringComparer.Ordinal);
+        this.index = new ConcurrentDictionary<string, Guid>(StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -35,7 +41,7 @@ public class DeduplicationIndex
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        bool added = _index.TryAdd(key, messageId);
+        bool added = this.index.TryAdd(key, messageId);
         return Task.FromResult(added);
     }
 
@@ -52,7 +58,7 @@ public class DeduplicationIndex
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_index.TryGetValue(key, out Guid messageId))
+        if (this.index.TryGetValue(key, out Guid messageId))
         {
             return Task.FromResult<Guid?>(messageId);
         }
@@ -77,7 +83,7 @@ public class DeduplicationIndex
 
         // Optimistic concurrency: only update if the current value matches expected
         bool updated = false;
-        _index.AddOrUpdate(
+        this.index.AddOrUpdate(
             key,
             newMessageId, // If key doesn't exist, add it (shouldn't happen in update scenario)
             (k, currentValue) =>
@@ -109,7 +115,7 @@ public class DeduplicationIndex
         cancellationToken.ThrowIfCancellationRequested();
 
         // AddOrUpdate returns the new value
-        _index.AddOrUpdate(key, newMessageId, (k, old) => newMessageId);
+        this.index.AddOrUpdate(key, newMessageId, (k, old) => newMessageId);
         return Task.FromResult(true);
     }
 
@@ -126,7 +132,7 @@ public class DeduplicationIndex
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        bool removed = _index.TryRemove(key, out _);
+        bool removed = this.index.TryRemove(key, out _);
         return Task.FromResult(removed);
     }
 
@@ -143,7 +149,7 @@ public class DeduplicationIndex
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        bool contains = _index.ContainsKey(key);
+        bool contains = this.index.ContainsKey(key);
         return Task.FromResult(contains);
     }
 
@@ -155,7 +161,7 @@ public class DeduplicationIndex
     public Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_index.Count);
+        return Task.FromResult(this.index.Count);
     }
 
     /// <summary>
@@ -165,7 +171,7 @@ public class DeduplicationIndex
     public Task ClearAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _index.Clear();
+        this.index.Clear();
         return Task.CompletedTask;
     }
 
@@ -178,7 +184,7 @@ public class DeduplicationIndex
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var snapshot = new System.Collections.Generic.Dictionary<string, Guid>(_index, StringComparer.Ordinal);
+        var snapshot = new System.Collections.Generic.Dictionary<string, Guid>(this.index, StringComparer.Ordinal);
         return Task.FromResult(snapshot);
     }
 
@@ -194,10 +200,10 @@ public class DeduplicationIndex
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        _index.Clear();
+        this.index.Clear();
         foreach (var kvp in snapshot)
         {
-            _index.TryAdd(kvp.Key, kvp.Value);
+            this.index.TryAdd(kvp.Key, kvp.Value);
         }
 
         return Task.CompletedTask;

@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="EnqueueBenchmarks.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using MessageQueue.Core;
@@ -14,9 +20,9 @@ namespace MessageQueue.Performance.Tests;
 [RankColumn]
 public class EnqueueBenchmarks
 {
-    private IQueueManager _queueManager = null!;
-    private ICircularBuffer _buffer = null!;
-    private DeduplicationIndex _deduplicationIndex = null!;
+    private IQueueManager queueManager = null!;
+    private ICircularBuffer buffer = null!;
+    private DeduplicationIndex deduplicationIndex = null!;
 
     [Params(1000, 10000, 100000)]
     public int MessageCount { get; set; }
@@ -31,9 +37,9 @@ public class EnqueueBenchmarks
             EnableDeduplication = true
         };
 
-        _buffer = new CircularBuffer(options.Capacity);
-        _deduplicationIndex = new DeduplicationIndex();
-        _queueManager = new QueueManager(_buffer, _deduplicationIndex, options);
+        this.buffer = new CircularBuffer(options.Capacity);
+        this.deduplicationIndex = new DeduplicationIndex();
+        this.queueManager = new QueueManager(this.buffer, this.deduplicationIndex, options);
     }
 
     [Benchmark(Description = "Enqueue without deduplication")]
@@ -41,7 +47,7 @@ public class EnqueueBenchmarks
     {
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
+            await this.queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
         }
     }
 
@@ -50,7 +56,7 @@ public class EnqueueBenchmarks
     {
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(
+            await this.queueManager.EnqueueAsync(
                 new TestMessage { Id = i, Data = $"Message {i}" },
                 deduplicationKey: $"key-{i}");
         }
@@ -61,7 +67,7 @@ public class EnqueueBenchmarks
     {
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(
+            await this.queueManager.EnqueueAsync(
                 new TestMessage { Id = i, Data = $"Message {i}" },
                 deduplicationKey: $"key-{i % 100}"); // Repeat every 100 messages
         }
@@ -80,7 +86,7 @@ public class EnqueueBenchmarks
             {
                 for (int i = 0; i < messagesPerProducer; i++)
                 {
-                    await _queueManager.EnqueueAsync(
+                    await this.queueManager.EnqueueAsync(
                         new TestMessage { Id = producerId * messagesPerProducer + i, Data = $"Message {i}" });
                 }
             }));

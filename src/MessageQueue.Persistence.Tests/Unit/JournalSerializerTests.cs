@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="JournalSerializerTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Persistence.Tests.Unit;
 
 using System;
@@ -12,12 +18,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class JournalSerializerTests
 {
-    private JournalSerializer _serializer = null!;
+    private JournalSerializer serializer = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _serializer = new JournalSerializer();
+        this.serializer = new JournalSerializer();
     }
 
     [TestMethod]
@@ -27,7 +33,7 @@ public class JournalSerializerTests
         var record = CreateTestRecord();
 
         // Act
-        var result = await _serializer.SerializeAsync(record);
+        var result = await this.serializer.SerializeAsync(record);
 
         // Assert
         result.Should().NotBeNull();
@@ -39,7 +45,7 @@ public class JournalSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.SerializeAsync(null!));
+            async () => await this.serializer.SerializeAsync(null!));
     }
 
     [TestMethod]
@@ -47,10 +53,10 @@ public class JournalSerializerTests
     {
         // Arrange
         var original = CreateTestRecord();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Act
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Should().NotBeNull();
@@ -66,7 +72,7 @@ public class JournalSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.DeserializeAsync(null!));
+            async () => await this.serializer.DeserializeAsync(null!));
     }
 
     [TestMethod]
@@ -77,7 +83,7 @@ public class JournalSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<ArgumentException>(
-            async () => await _serializer.DeserializeAsync(shortData));
+            async () => await this.serializer.DeserializeAsync(shortData));
         exception.Message.Should().Contain("too short");
     }
 
@@ -86,14 +92,14 @@ public class JournalSerializerTests
     {
         // Arrange
         var original = CreateTestRecord();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the CRC (bytes 12-15 in header)
         serialized[12] ^= 0xFF;
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
         exception.Message.Should().Contain("CRC mismatch");
     }
 
@@ -102,14 +108,14 @@ public class JournalSerializerTests
     {
         // Arrange
         var original = CreateTestRecord();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the payload (after header)
         serialized[20] ^= 0xFF;
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
     }
 
     [TestMethod]
@@ -117,7 +123,7 @@ public class JournalSerializerTests
     {
         // Arrange
         var original = CreateTestRecord();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the payload length (bytes 8-11 in header) to be larger than actual data
         var corruptedLength = BitConverter.GetBytes(serialized.Length * 2);
@@ -125,7 +131,7 @@ public class JournalSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
         exception.Message.Should().Contain("does not match payload length");
     }
 
@@ -135,10 +141,10 @@ public class JournalSerializerTests
         // Arrange
         var record = CreateTestRecord();
         record.SequenceNumber = 42;
-        var serialized = await _serializer.SerializeAsync(record);
+        var serialized = await this.serializer.SerializeAsync(record);
 
         // Act
-        var sequenceNumber = await _serializer.ReadSequenceNumberAsync(serialized);
+        var sequenceNumber = await this.serializer.ReadSequenceNumberAsync(serialized);
 
         // Assert
         sequenceNumber.Should().Be(42);
@@ -149,7 +155,7 @@ public class JournalSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.ReadSequenceNumberAsync(null!));
+            async () => await this.serializer.ReadSequenceNumberAsync(null!));
     }
 
     [TestMethod]
@@ -160,7 +166,7 @@ public class JournalSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<ArgumentException>(
-            async () => await _serializer.ReadSequenceNumberAsync(shortData));
+            async () => await this.serializer.ReadSequenceNumberAsync(shortData));
         exception.Message.Should().Contain("too short");
     }
 
@@ -169,10 +175,10 @@ public class JournalSerializerTests
     {
         // Arrange
         var record = CreateTestRecord();
-        var serialized = await _serializer.SerializeAsync(record);
+        var serialized = await this.serializer.SerializeAsync(record);
 
         // Act
-        var recordSize = await _serializer.ReadRecordSizeAsync(serialized);
+        var recordSize = await this.serializer.ReadRecordSizeAsync(serialized);
 
         // Assert
         recordSize.Should().Be(serialized.Length);
@@ -183,7 +189,7 @@ public class JournalSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.ReadRecordSizeAsync(null!));
+            async () => await this.serializer.ReadRecordSizeAsync(null!));
     }
 
     [TestMethod]
@@ -194,7 +200,7 @@ public class JournalSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<ArgumentException>(
-            async () => await _serializer.ReadRecordSizeAsync(shortData));
+            async () => await this.serializer.ReadRecordSizeAsync(shortData));
         exception.Message.Should().Contain("too short");
     }
 
@@ -209,8 +215,8 @@ public class JournalSerializerTests
             record.OperationCode = opCode;
 
             // Act
-            var serialized = await _serializer.SerializeAsync(record);
-            var deserialized = await _serializer.DeserializeAsync(serialized);
+            var serialized = await this.serializer.SerializeAsync(record);
+            var deserialized = await this.serializer.DeserializeAsync(serialized);
 
             // Assert
             deserialized.OperationCode.Should().Be(opCode);
@@ -225,8 +231,8 @@ public class JournalSerializerTests
         record.Payload = new string('X', 10000); // Large payload
 
         // Act
-        var serialized = await _serializer.SerializeAsync(record);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(record);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Payload.Should().Be(record.Payload);
@@ -241,8 +247,8 @@ public class JournalSerializerTests
         record.Payload = string.Empty;
 
         // Act
-        var serialized = await _serializer.SerializeAsync(record);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(record);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Payload.Should().BeEmpty();
@@ -256,8 +262,8 @@ public class JournalSerializerTests
         record.Payload = "{\"test\":\"こんにちは\",\"emoji\":\"🤖\",\"special\":\"\\n\\t\\\"\"}";
 
         // Act
-        var serialized = await _serializer.SerializeAsync(record);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(record);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Payload.Should().Be(record.Payload);
@@ -280,13 +286,13 @@ public class JournalSerializerTests
         record3.OperationCode = OperationCode.Acknowledge;
 
         // Act
-        var serialized1 = await _serializer.SerializeAsync(record1);
-        var serialized2 = await _serializer.SerializeAsync(record2);
-        var serialized3 = await _serializer.SerializeAsync(record3);
+        var serialized1 = await this.serializer.SerializeAsync(record1);
+        var serialized2 = await this.serializer.SerializeAsync(record2);
+        var serialized3 = await this.serializer.SerializeAsync(record3);
 
-        var deserialized1 = await _serializer.DeserializeAsync(serialized1);
-        var deserialized2 = await _serializer.DeserializeAsync(serialized2);
-        var deserialized3 = await _serializer.DeserializeAsync(serialized3);
+        var deserialized1 = await this.serializer.DeserializeAsync(serialized1);
+        var deserialized2 = await this.serializer.DeserializeAsync(serialized2);
+        var deserialized3 = await this.serializer.DeserializeAsync(serialized3);
 
         // Assert
         deserialized1.SequenceNumber.Should().Be(1);

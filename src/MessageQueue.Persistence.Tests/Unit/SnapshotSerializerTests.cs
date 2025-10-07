@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="SnapshotSerializerTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Persistence.Tests.Unit;
 
 using System;
@@ -13,12 +19,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class SnapshotSerializerTests
 {
-    private SnapshotSerializer _serializer = null!;
+    private SnapshotSerializer serializer = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _serializer = new SnapshotSerializer();
+        this.serializer = new SnapshotSerializer();
     }
 
     [TestMethod]
@@ -28,7 +34,7 @@ public class SnapshotSerializerTests
         var snapshot = CreateTestSnapshot();
 
         // Act
-        var result = await _serializer.SerializeAsync(snapshot);
+        var result = await this.serializer.SerializeAsync(snapshot);
 
         // Assert
         result.Should().NotBeNull();
@@ -40,7 +46,7 @@ public class SnapshotSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.SerializeAsync(null!));
+            async () => await this.serializer.SerializeAsync(null!));
     }
 
     [TestMethod]
@@ -48,10 +54,10 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var original = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Act
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Should().NotBeNull();
@@ -67,7 +73,7 @@ public class SnapshotSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.DeserializeAsync(null!));
+            async () => await this.serializer.DeserializeAsync(null!));
     }
 
     [TestMethod]
@@ -78,7 +84,7 @@ public class SnapshotSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(shortData));
+            async () => await this.serializer.DeserializeAsync(shortData));
         exception.Message.Should().Contain("too short");
     }
 
@@ -87,14 +93,14 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var original = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the magic number (first 8 bytes)
         serialized[0] ^= 0xFF;
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
         exception.Message.Should().Contain("Invalid magic number");
     }
 
@@ -103,14 +109,14 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var original = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the CRC (bytes 20-23 in header)
         serialized[20] ^= 0xFF;
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
         exception.Message.Should().Contain("CRC mismatch");
     }
 
@@ -119,14 +125,14 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var original = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the payload (after header)
         serialized[30] ^= 0xFF;
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
     }
 
     [TestMethod]
@@ -134,7 +140,7 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var original = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(original);
+        var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the version in header (bytes 8-15)
         var corruptedVersion = BitConverter.GetBytes(999L);
@@ -145,7 +151,7 @@ public class SnapshotSerializerTests
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.DeserializeAsync(serialized));
+            async () => await this.serializer.DeserializeAsync(serialized));
     }
 
     [TestMethod]
@@ -154,10 +160,10 @@ public class SnapshotSerializerTests
         // Arrange
         var snapshot = CreateTestSnapshot();
         snapshot.Version = 42;
-        var serialized = await _serializer.SerializeAsync(snapshot);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
 
         // Act
-        var version = await _serializer.ReadVersionAsync(serialized);
+        var version = await this.serializer.ReadVersionAsync(serialized);
 
         // Assert
         version.Should().Be(42);
@@ -168,7 +174,7 @@ public class SnapshotSerializerTests
     {
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-            async () => await _serializer.ReadVersionAsync(null!));
+            async () => await this.serializer.ReadVersionAsync(null!));
     }
 
     [TestMethod]
@@ -179,7 +185,7 @@ public class SnapshotSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<ArgumentException>(
-            async () => await _serializer.ReadVersionAsync(shortData));
+            async () => await this.serializer.ReadVersionAsync(shortData));
         exception.Message.Should().Contain("too short");
     }
 
@@ -193,7 +199,7 @@ public class SnapshotSerializerTests
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<InvalidDataException>(
-            async () => await _serializer.ReadVersionAsync(data));
+            async () => await this.serializer.ReadVersionAsync(data));
     }
 
     [TestMethod]
@@ -201,10 +207,10 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var snapshot = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(snapshot);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
 
         // Act
-        var isValid = await _serializer.ValidateHeaderAsync(serialized);
+        var isValid = await this.serializer.ValidateHeaderAsync(serialized);
 
         // Assert
         isValid.Should().BeTrue();
@@ -214,7 +220,7 @@ public class SnapshotSerializerTests
     public async Task ValidateHeaderAsync_WithNullData_ReturnsFalse()
     {
         // Act
-        var isValid = await _serializer.ValidateHeaderAsync(null!);
+        var isValid = await this.serializer.ValidateHeaderAsync(null!);
 
         // Assert
         isValid.Should().BeFalse();
@@ -227,7 +233,7 @@ public class SnapshotSerializerTests
         var shortData = new byte[10];
 
         // Act
-        var isValid = await _serializer.ValidateHeaderAsync(shortData);
+        var isValid = await this.serializer.ValidateHeaderAsync(shortData);
 
         // Assert
         isValid.Should().BeFalse();
@@ -238,11 +244,11 @@ public class SnapshotSerializerTests
     {
         // Arrange
         var snapshot = CreateTestSnapshot();
-        var serialized = await _serializer.SerializeAsync(snapshot);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
         serialized[0] ^= 0xFF; // Corrupt magic
 
         // Act
-        var isValid = await _serializer.ValidateHeaderAsync(serialized);
+        var isValid = await this.serializer.ValidateHeaderAsync(serialized);
 
         // Assert
         isValid.Should().BeFalse();
@@ -264,8 +270,8 @@ public class SnapshotSerializerTests
         };
 
         // Act
-        var serialized = await _serializer.SerializeAsync(snapshot);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.MessageCount.Should().Be(0);
@@ -286,8 +292,8 @@ public class SnapshotSerializerTests
         snapshot.MessageCount = 3;
 
         // Act
-        var serialized = await _serializer.SerializeAsync(snapshot);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Messages.Should().HaveCount(3);
@@ -313,8 +319,8 @@ public class SnapshotSerializerTests
         };
 
         // Act
-        var serialized = await _serializer.SerializeAsync(snapshot);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.DeduplicationIndex.Should().HaveCount(3);
@@ -337,8 +343,8 @@ public class SnapshotSerializerTests
         snapshot.MessageCount = 100;
 
         // Act
-        var serialized = await _serializer.SerializeAsync(snapshot);
-        var deserialized = await _serializer.DeserializeAsync(serialized);
+        var serialized = await this.serializer.SerializeAsync(snapshot);
+        var deserialized = await this.serializer.DeserializeAsync(serialized);
 
         // Assert
         deserialized.Messages.Should().HaveCount(100);

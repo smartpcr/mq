@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="FilePersisterTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Persistence.Tests.Unit;
 
 using System;
@@ -13,16 +19,16 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class FilePersisterTests
 {
-    private string _testStoragePath = null!;
-    private PersistenceOptions _options = null!;
+    private string testStoragePath = null!;
+    private PersistenceOptions options = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _testStoragePath = Path.Combine(Path.GetTempPath(), $"mq-test-{Guid.NewGuid()}");
-        _options = new PersistenceOptions
+        this.testStoragePath = Path.Combine(Path.GetTempPath(), $"mq-test-{Guid.NewGuid()}");
+        this.options = new PersistenceOptions
         {
-            StoragePath = _testStoragePath,
+            StoragePath = this.testStoragePath,
             SnapshotInterval = TimeSpan.FromMinutes(5),
             SnapshotThreshold = 10
         };
@@ -31,11 +37,11 @@ public class FilePersisterTests
     [TestCleanup]
     public void Cleanup()
     {
-        if (Directory.Exists(_testStoragePath))
+        if (Directory.Exists(this.testStoragePath))
         {
             try
             {
-                Directory.Delete(_testStoragePath, recursive: true);
+                Directory.Delete(this.testStoragePath, recursive: true);
             }
             catch
             {
@@ -48,10 +54,10 @@ public class FilePersisterTests
     public void Constructor_CreatesStorageDirectory()
     {
         // Act
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Assert
-        Directory.Exists(_testStoragePath).Should().BeTrue();
+        Directory.Exists(this.testStoragePath).Should().BeTrue();
     }
 
     [TestMethod]
@@ -65,14 +71,14 @@ public class FilePersisterTests
     public async Task WriteOperationAsync_CreatesJournalFile()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var operation = CreateTestOperation();
 
         // Act
         await persister.WriteOperationAsync(operation);
 
         // Assert
-        var journalPath = Path.Combine(_testStoragePath, "journal.dat");
+        var journalPath = Path.Combine(this.testStoragePath, "journal.dat");
         File.Exists(journalPath).Should().BeTrue();
     }
 
@@ -80,7 +86,7 @@ public class FilePersisterTests
     public async Task WriteOperationAsync_WithNullOperation_ThrowsArgumentNullException()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
@@ -91,14 +97,14 @@ public class FilePersisterTests
     public async Task CreateSnapshotAsync_CreatesSnapshotFile()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var snapshot = CreateTestSnapshot();
 
         // Act
         await persister.CreateSnapshotAsync(snapshot);
 
         // Assert
-        var snapshotPath = Path.Combine(_testStoragePath, "snapshot.dat");
+        var snapshotPath = Path.Combine(this.testStoragePath, "snapshot.dat");
         File.Exists(snapshotPath).Should().BeTrue();
     }
 
@@ -106,7 +112,7 @@ public class FilePersisterTests
     public async Task CreateSnapshotAsync_WithNullSnapshot_ThrowsArgumentNullException()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentNullException>(
@@ -117,7 +123,7 @@ public class FilePersisterTests
     public async Task LoadSnapshotAsync_WithNoSnapshot_ReturnsNull()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Act
         var snapshot = await persister.LoadSnapshotAsync();
@@ -130,7 +136,7 @@ public class FilePersisterTests
     public async Task LoadSnapshotAsync_AfterCreate_ReturnsSnapshot()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var original = CreateTestSnapshot();
         await persister.CreateSnapshotAsync(original);
 
@@ -148,7 +154,7 @@ public class FilePersisterTests
     public async Task ReplayJournalAsync_WithNoJournal_ReturnsEmptyList()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Act
         var operations = await persister.ReplayJournalAsync(0);
@@ -161,7 +167,7 @@ public class FilePersisterTests
     public async Task ReplayJournalAsync_AfterWrites_ReturnsOperations()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var op1 = CreateTestOperation(1, OperationCode.Enqueue);
         var op2 = CreateTestOperation(2, OperationCode.Checkout);
         var op3 = CreateTestOperation(3, OperationCode.Acknowledge);
@@ -185,7 +191,7 @@ public class FilePersisterTests
     public async Task ReplayJournalAsync_WithSinceVersion_ReturnsOnlyNewer()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var op1 = CreateTestOperation(1, OperationCode.Enqueue);
         var op2 = CreateTestOperation(2, OperationCode.Checkout);
         var op3 = CreateTestOperation(3, OperationCode.Acknowledge);
@@ -208,7 +214,7 @@ public class FilePersisterTests
     public async Task TruncateJournalAsync_RemovesOldOperations()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var op1 = CreateTestOperation(1, OperationCode.Enqueue);
         var op2 = CreateTestOperation(2, OperationCode.Checkout);
         var op3 = CreateTestOperation(3, OperationCode.Acknowledge);
@@ -231,7 +237,7 @@ public class FilePersisterTests
     public void ShouldSnapshot_InitiallyReturnsFalse()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Act
         var should = persister.ShouldSnapshot();
@@ -244,8 +250,8 @@ public class FilePersisterTests
     public async Task ShouldSnapshot_AfterThresholdOperations_ReturnsTrue()
     {
         // Arrange
-        _options.SnapshotThreshold = 5;
-        using var persister = new FilePersister(_options);
+        this.options.SnapshotThreshold = 5;
+        using var persister = new FilePersister(this.options);
 
         // Write 5 operations
         for (int i = 1; i <= 5; i++)
@@ -264,8 +270,8 @@ public class FilePersisterTests
     public async Task ShouldSnapshot_AfterSnapshotInterval_ReturnsTrue()
     {
         // Arrange
-        _options.SnapshotInterval = TimeSpan.FromMilliseconds(100);
-        using var persister = new FilePersister(_options);
+        this.options.SnapshotInterval = TimeSpan.FromMilliseconds(100);
+        using var persister = new FilePersister(this.options);
 
         // Wait for interval to pass
         await Task.Delay(150);
@@ -281,8 +287,8 @@ public class FilePersisterTests
     public async Task ShouldSnapshot_AfterSnapshot_ResetsCounter()
     {
         // Arrange
-        _options.SnapshotThreshold = 5;
-        using var persister = new FilePersister(_options);
+        this.options.SnapshotThreshold = 5;
+        using var persister = new FilePersister(this.options);
 
         // Write 5 operations
         for (int i = 1; i <= 5; i++)
@@ -304,7 +310,7 @@ public class FilePersisterTests
     public async Task CreateSnapshot_OverwritesPreviousSnapshot()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
         var snapshot1 = CreateTestSnapshot();
         snapshot1.Version = 1;
         await persister.CreateSnapshotAsync(snapshot1);
@@ -325,7 +331,7 @@ public class FilePersisterTests
     public async Task MultipleOperations_CanBeReplayedInOrder()
     {
         // Arrange
-        using var persister = new FilePersister(_options);
+        using var persister = new FilePersister(this.options);
 
         // Write operations in order
         for (int i = 1; i <= 20; i++)

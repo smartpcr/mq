@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="DeadLetterQueueTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core.Tests;
 
 using System;
@@ -14,24 +20,24 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class DeadLetterQueueTests
 {
-    private IQueueManager _queueManager = null!;
-    private DeadLetterQueue _dlq = null!;
-    private QueueOptions _options = null!;
+    private IQueueManager queueManager = null!;
+    private DeadLetterQueue dlq = null!;
+    private QueueOptions options = null!;
 
     [TestInitialize]
     public void Setup()
     {
         var buffer = new CircularBuffer(100);
         var dedupIndex = new DeduplicationIndex();
-        _options = new QueueOptions
+        this.options = new QueueOptions
         {
             Capacity = 100,
             DefaultTimeout = TimeSpan.FromMinutes(5),
             DefaultMaxRetries = 3
         };
 
-        _queueManager = new QueueManager(buffer, dedupIndex, _options);
-        _dlq = new DeadLetterQueue(_queueManager, _options);
+        this.queueManager = new QueueManager(buffer, dedupIndex, this.options);
+        this.dlq = new DeadLetterQueue(this.queueManager, this.options);
     }
 
     [TestMethod]
@@ -49,10 +55,10 @@ public class DeadLetterQueueTests
         };
 
         // Act
-        await _dlq.AddAsync(envelope, "Test failure");
+        await this.dlq.AddAsync(envelope, "Test failure");
 
         // Assert
-        var messages = await _dlq.GetMessagesAsync();
+        var messages = await this.dlq.GetMessagesAsync();
         messages.Should().HaveCount(1);
         var dlqMessage = messages.First();
         dlqMessage.MessageId.Should().Be(envelope.MessageId);
@@ -83,10 +89,10 @@ public class DeadLetterQueueTests
         }
 
         // Act
-        await _dlq.AddAsync(envelope, "Processing failed", exception);
+        await this.dlq.AddAsync(envelope, "Processing failed", exception);
 
         // Assert
-        var messages = await _dlq.GetMessagesAsync();
+        var messages = await this.dlq.GetMessagesAsync();
         var dlqMessage = messages.First();
         dlqMessage.ExceptionMessage.Should().Be("Test exception");
         dlqMessage.ExceptionType.Should().Contain("InvalidOperationException");
@@ -97,14 +103,14 @@ public class DeadLetterQueueTests
     public async Task GetMessagesAsync_WithTypeFilter_ReturnsMatchingMessages()
     {
         // Arrange
-        await _dlq.AddAsync(new MessageEnvelope
+        await this.dlq.AddAsync(new MessageEnvelope
         {
             MessageId = Guid.NewGuid(),
             MessageType = typeof(string).FullName,
             Payload = "test1"
         }, "Failure 1");
 
-        await _dlq.AddAsync(new MessageEnvelope
+        await this.dlq.AddAsync(new MessageEnvelope
         {
             MessageId = Guid.NewGuid(),
             MessageType = typeof(int).FullName,
@@ -112,7 +118,7 @@ public class DeadLetterQueueTests
         }, "Failure 2");
 
         // Act
-        var messages = await _dlq.GetMessagesAsync(typeof(string));
+        var messages = await this.dlq.GetMessagesAsync(typeof(string));
 
         // Assert
         messages.Should().HaveCount(1);
@@ -125,7 +131,7 @@ public class DeadLetterQueueTests
         // Arrange
         for (int i = 0; i < 10; i++)
         {
-            await _dlq.AddAsync(new MessageEnvelope
+            await this.dlq.AddAsync(new MessageEnvelope
             {
                 MessageId = Guid.NewGuid(),
                 MessageType = "Test",
@@ -134,7 +140,7 @@ public class DeadLetterQueueTests
         }
 
         // Act
-        var messages = await _dlq.GetMessagesAsync(limit: 5);
+        var messages = await this.dlq.GetMessagesAsync(limit: 5);
 
         // Assert
         messages.Should().HaveCount(5);
@@ -144,7 +150,7 @@ public class DeadLetterQueueTests
     public async Task ReplayAsync_ReenqueuesMessageToMainQueue()
     {
         // Arrange
-        var originalId = await _queueManager.EnqueueAsync("Test message");
+        var originalId = await this.queueManager.EnqueueAsync("Test message");
         var envelope = new MessageEnvelope
         {
             MessageId = originalId,
@@ -153,16 +159,16 @@ public class DeadLetterQueueTests
             Status = MessageStatus.DeadLetter
         };
 
-        await _dlq.AddAsync(envelope, "Test failure");
+        await this.dlq.AddAsync(envelope, "Test failure");
 
         // Act
-        await _dlq.ReplayAsync(originalId, resetRetryCount: true);
+        await this.dlq.ReplayAsync(originalId, resetRetryCount: true);
 
         // Assert
-        var dlqMessages = await _dlq.GetMessagesAsync();
+        var dlqMessages = await this.dlq.GetMessagesAsync();
         dlqMessages.Should().BeEmpty(); // Removed from DLQ
 
-        var queueCount = await _queueManager.GetCountAsync();
+        var queueCount = await this.queueManager.GetCountAsync();
         queueCount.Should().BeGreaterOrEqualTo(1); // Added back to queue
     }
 
@@ -179,13 +185,13 @@ public class DeadLetterQueueTests
             MaxRetries = 3
         };
 
-        await _dlq.AddAsync(envelope, "Max retries");
+        await this.dlq.AddAsync(envelope, "Max retries");
 
         // Act
-        await _dlq.ReplayAsync(envelope.MessageId, resetRetryCount: true);
+        await this.dlq.ReplayAsync(envelope.MessageId, resetRetryCount: true);
 
         // Assert - message should be re-enqueued with new ID
-        var dlqMessages = await _dlq.GetMessagesAsync();
+        var dlqMessages = await this.dlq.GetMessagesAsync();
         dlqMessages.Should().BeEmpty();
     }
 
@@ -193,7 +199,7 @@ public class DeadLetterQueueTests
     public async Task ReplayAsync_NonExistentMessage_ThrowsException()
     {
         // Act & Assert
-        var act = async () => await _dlq.ReplayAsync(Guid.NewGuid());
+        var act = async () => await this.dlq.ReplayAsync(Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*not found in dead-letter queue*");
     }
@@ -204,7 +210,7 @@ public class DeadLetterQueueTests
         // Arrange
         for (int i = 0; i < 5; i++)
         {
-            await _dlq.AddAsync(new MessageEnvelope
+            await this.dlq.AddAsync(new MessageEnvelope
             {
                 MessageId = Guid.NewGuid(),
                 MessageType = "Test",
@@ -213,10 +219,10 @@ public class DeadLetterQueueTests
         }
 
         // Act
-        await _dlq.PurgeAsync();
+        await this.dlq.PurgeAsync();
 
         // Assert
-        var messages = await _dlq.GetMessagesAsync();
+        var messages = await this.dlq.GetMessagesAsync();
         messages.Should().BeEmpty();
     }
 
@@ -231,10 +237,10 @@ public class DeadLetterQueueTests
             Payload = "old"
         };
 
-        await _dlq.AddAsync(oldEnvelope, "Old failure");
+        await this.dlq.AddAsync(oldEnvelope, "Old failure");
 
         // Simulate old timestamp
-        var messages = await _dlq.GetMessagesAsync();
+        var messages = await this.dlq.GetMessagesAsync();
         var oldMessage = messages.First();
 
         // Wait a bit
@@ -247,13 +253,13 @@ public class DeadLetterQueueTests
             Payload = "new"
         };
 
-        await _dlq.AddAsync(newEnvelope, "New failure");
+        await this.dlq.AddAsync(newEnvelope, "New failure");
 
         // Act - purge messages older than 50ms
-        await _dlq.PurgeAsync(TimeSpan.FromMilliseconds(50));
+        await this.dlq.PurgeAsync(TimeSpan.FromMilliseconds(50));
 
         // Assert
-        var remainingMessages = await _dlq.GetMessagesAsync();
+        var remainingMessages = await this.dlq.GetMessagesAsync();
         remainingMessages.Should().HaveCount(1);
         remainingMessages.First().MessageId.Should().Be(newEnvelope.MessageId);
     }
@@ -262,21 +268,21 @@ public class DeadLetterQueueTests
     public async Task GetMetricsAsync_ReturnsCorrectMetrics()
     {
         // Arrange
-        await _dlq.AddAsync(new MessageEnvelope
+        await this.dlq.AddAsync(new MessageEnvelope
         {
             MessageId = Guid.NewGuid(),
             MessageType = "Type1",
             Payload = "test1"
         }, "Timeout");
 
-        await _dlq.AddAsync(new MessageEnvelope
+        await this.dlq.AddAsync(new MessageEnvelope
         {
             MessageId = Guid.NewGuid(),
             MessageType = "Type1",
             Payload = "test2"
         }, "Timeout");
 
-        await _dlq.AddAsync(new MessageEnvelope
+        await this.dlq.AddAsync(new MessageEnvelope
         {
             MessageId = Guid.NewGuid(),
             MessageType = "Type2",
@@ -284,7 +290,7 @@ public class DeadLetterQueueTests
         }, "Error");
 
         // Act
-        var metrics = await _dlq.GetMetricsAsync();
+        var metrics = await this.dlq.GetMetricsAsync();
 
         // Assert
         metrics.TotalCount.Should().Be(3);

@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="EndToEndBenchmarks.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using MessageQueue.Core;
@@ -15,11 +21,11 @@ namespace MessageQueue.Performance.Tests;
 [RankColumn]
 public class EndToEndBenchmarks
 {
-    private IQueueManager _queueManager = null!;
-    private ICircularBuffer _buffer = null!;
-    private DeduplicationIndex _deduplicationIndex = null!;
-    private IHandlerDispatcher _dispatcher = null!;
-    private ServiceProvider _serviceProvider = null!;
+    private IQueueManager queueManager = null!;
+    private ICircularBuffer buffer = null!;
+    private DeduplicationIndex deduplicationIndex = null!;
+    private IHandlerDispatcher dispatcher = null!;
+    private ServiceProvider serviceProvider = null!;
 
     [Params(1000, 5000)]
     public int MessageCount { get; set; }
@@ -37,9 +43,9 @@ public class EndToEndBenchmarks
             DefaultTimeout = TimeSpan.FromSeconds(30)
         };
 
-        _buffer = new CircularBuffer(options.Capacity);
-        _deduplicationIndex = new DeduplicationIndex();
-        _queueManager = new QueueManager(_buffer, _deduplicationIndex, options);
+        this.buffer = new CircularBuffer(options.Capacity);
+        this.deduplicationIndex = new DeduplicationIndex();
+        this.queueManager = new QueueManager(this.buffer, this.deduplicationIndex, options);
 
         // Register test handler
         services.AddScoped<IMessageHandler<TestMessage>, TestMessageHandler>();
@@ -51,37 +57,37 @@ public class EndToEndBenchmarks
             opt.MaxRetries = 3;
         });
 
-        _serviceProvider = services.BuildServiceProvider();
+        this.serviceProvider = services.BuildServiceProvider();
 
-        var registry = new HandlerRegistry(_serviceProvider);
+        var registry = new HandlerRegistry(this.serviceProvider);
         registry.RegisterHandler<TestMessage, TestMessageHandler>(
-            _serviceProvider.GetRequiredService<HandlerOptions<TestMessage>>());
+            this.serviceProvider.GetRequiredService<HandlerOptions<TestMessage>>());
 
-        _dispatcher = new HandlerDispatcher(
-            _queueManager,
+        this.dispatcher = new HandlerDispatcher(
+            this.queueManager,
             registry,
-            _serviceProvider.GetRequiredService<IServiceScopeFactory>());
+            this.serviceProvider.GetRequiredService<IServiceScopeFactory>());
     }
 
     [GlobalCleanup]
     public void Cleanup()
     {
-        _dispatcher?.StopAsync().GetAwaiter().GetResult();
-        _serviceProvider?.Dispose();
+        this.dispatcher?.StopAsync().GetAwaiter().GetResult();
+        this.serviceProvider?.Dispose();
     }
 
     [Benchmark(Description = "Producer-Consumer throughput")]
     public async Task ProducerConsumerThroughput()
     {
-        await _dispatcher.StartAsync();
+        await this.dispatcher.StartAsync();
 
         // Producer task
         var producerTask = Task.Run(async () =>
         {
             for (int i = 0; i < MessageCount; i++)
             {
-                await _queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
-                _dispatcher.SignalMessageReady(typeof(TestMessage));
+                await this.queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
+                this.dispatcher.SignalMessageReady(typeof(TestMessage));
             }
         });
 
@@ -91,13 +97,13 @@ public class EndToEndBenchmarks
         // Wait for all messages to be processed
         await Task.Delay(100); // Small delay to ensure processing completes
 
-        await _dispatcher.StopAsync();
+        await this.dispatcher.StopAsync();
     }
 
     [Benchmark(Description = "Multi-producer multi-consumer")]
     public async Task MultiProducerMultiConsumer()
     {
-        await _dispatcher.StartAsync();
+        await this.dispatcher.StartAsync();
 
         var producerTasks = new List<Task>();
         int messagesPerProducer = MessageCount / 5;
@@ -109,9 +115,9 @@ public class EndToEndBenchmarks
             {
                 for (int i = 0; i < messagesPerProducer; i++)
                 {
-                    await _queueManager.EnqueueAsync(
+                    await this.queueManager.EnqueueAsync(
                         new TestMessage { Id = producerId * messagesPerProducer + i, Data = $"Message {i}" });
-                    _dispatcher.SignalMessageReady(typeof(TestMessage));
+                    this.dispatcher.SignalMessageReady(typeof(TestMessage));
                 }
             }));
         }
@@ -121,7 +127,7 @@ public class EndToEndBenchmarks
         // Wait for processing
         await Task.Delay(100);
 
-        await _dispatcher.StopAsync();
+        await this.dispatcher.StopAsync();
     }
 
     private class TestMessage
