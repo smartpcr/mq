@@ -9,7 +9,11 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        configuration: [Debug, Release]
 
     steps:
       - name: Checkout repository
@@ -24,7 +28,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration ${{ matrix.configuration }} --no-restore
 
       - name: Detect test projects
         id: detect-tests
@@ -40,23 +44,25 @@ jobs:
 
       - name: Test
         if: steps.detect-tests.outputs.has-tests == 'true'
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal
 
       - name: Skip tests (no test projects found)
         if: steps.detect-tests.outputs.has-tests != 'true'
         run: echo "No test projects found. Skipping tests."
 
       - name: Pack NuGet package
-        run: dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj --configuration Release --no-build --output ./artifacts -p:ContinuousIntegrationBuild=true
+        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
+        run: dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj --configuration Release --no-build --output ./packages -p:ContinuousIntegrationBuild=true
 
       - name: Upload NuGet artifact
+        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
-          path: artifacts/*.nupkg
+          path: packages/*.nupkg
 
       - name: Publish NuGet package
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
+        run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --skip-duplicate
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
