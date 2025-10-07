@@ -32,6 +32,11 @@
     <DefineConstants>$(DefineConstants);RELEASE</DefineConstants>
   </PropertyGroup>
 
+  <!-- Override TargetFrameworks for test projects on Linux -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' AND '$(OS)' != 'Windows_NT'">
+    <TargetFrameworks>net8.0</TargetFrameworks>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(IsTestProject)' == 'true'">
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
