@@ -442,3 +442,7 @@ Copyright © AzureStack Compute
 ## Contributing
 
 This is an internal project. Please refer to the implementation plan for current development priorities.
+
+## Release Process
+
+See [docs/release-guide.md](docs/release-guide.md) for step-by-step instructions on cutting a release with the manual GitHub Actions workflow, including version preparation, inputs, and publishing behaviour.

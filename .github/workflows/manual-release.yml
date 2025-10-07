@@ -1,0 +1,93 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (semver, e.g. 1.2.3). A leading v is optional.'
+        required: true
+      release_notes:
+        description: 'Optional release notes (Markdown).'
+        required: false
+
+jobs:
+  release:
+    name: Build, package, and create release
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION_INPUT: ${{ inputs.release_version }}
+      RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      NUGET_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Normalize version input
+        id: version
+        run: |
+          set -euo pipefail
+          INPUT="${RELEASE_VERSION_INPUT}"
+          INPUT="$(echo "${INPUT}" | xargs)"
+          INPUT="${INPUT#v}"
+          if [ -z "${INPUT}" ]; then
+            echo "Release version input cannot be empty after normalization." >&2
+            exit 1
+          fi
+          echo "version=${INPUT}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${INPUT}" >> "$GITHUB_OUTPUT"
+          echo "PACKAGE_VERSION=${INPUT}" >> "$GITHUB_ENV"
+          echo "TAG_NAME=v${INPUT}" >> "$GITHUB_ENV"
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore MessageQueue.sln
+
+      - name: Build (Release)
+        run: dotnet build MessageQueue.sln --configuration Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test MessageQueue.sln --configuration Release --no-build --verbosity normal
+
+      - name: Pack NuGet package
+        run: |
+          dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./packages \
+            -p:ContinuousIntegrationBuild=true \
+            -p:PackageVersion="$PACKAGE_VERSION"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: messagequeue-nuget-${{ steps.version.outputs.version }}
+          path: packages/*.nupkg
+
+      - name: Publish package to GitHub Packages
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: dotnet nuget push ./packages/*.nupkg --api-key "$NUGET_API_KEY" --source "$NUGET_SOURCE" --skip-duplicate
+
+      - name: Prepare release notes
+        run: |
+          if [ -z "$RELEASE_NOTES_INPUT" ]; then
+            echo "Release generated via the manual release workflow." > RELEASE_NOTES.md
+          else
+            printf "%s" "$RELEASE_NOTES_INPUT" > RELEASE_NOTES.md
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: MessageQueue ${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          files: packages/*.nupkg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
