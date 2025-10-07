@@ -9,6 +9,10 @@ namespace MessageQueue.Core.Trace;
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 /// <summary>
 /// OpenTelemetry implementation for message queue telemetry.
@@ -46,11 +50,15 @@ public sealed class MessageQueueOpenTelemetry : IMessageQueueLogger, IMessageQue
     private int lastInFlightCount;
     private int lastDlqCount;
     private bool disposed;
+    private TracerProvider? tracerProvider;
+    private MeterProvider? meterProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MessageQueueOpenTelemetry"/> class.
     /// </summary>
-    public MessageQueueOpenTelemetry()
+    /// <param name="enableOtlpExport">Enable OTLP export.</param>
+    /// <param name="otlpEndpoint">OTLP endpoint URL.</param>
+    public MessageQueueOpenTelemetry(bool enableOtlpExport = true, string otlpEndpoint = "http://localhost:4320")
     {
         this.activitySource = new ActivitySource(ActivitySourceName, "1.0.0");
         this.meter = new Meter(MeterName, "1.0.0");
@@ -123,6 +131,29 @@ public sealed class MessageQueueOpenTelemetry : IMessageQueueLogger, IMessageQue
             "messagequeue.queue.depth.dlq",
             () => this.lastDlqCount,
             description: "Number of messages in dead letter queue");
+
+        // Configure OTLP export if enabled
+        if (enableOtlpExport)
+        {
+            this.tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(ActivitySourceName)
+                .AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(otlpEndpoint);
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                })
+                .Build();
+
+            this.meterProvider = Sdk.CreateMeterProviderBuilder()
+                .AddMeter(MeterName)
+                .AddOtlpExporter((options, readerOptions) =>
+                {
+                    options.Endpoint = new Uri(otlpEndpoint);
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                    readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10000;
+                })
+                .Build();
+        }
     }
 
     #region IMessageQueueLogger Implementation
@@ -352,6 +383,8 @@ public sealed class MessageQueueOpenTelemetry : IMessageQueueLogger, IMessageQue
     {
         if (!this.disposed)
         {
+            this.tracerProvider?.Dispose();
+            this.meterProvider?.Dispose();
             this.activitySource.Dispose();
             this.meter.Dispose();
             this.disposed = true;

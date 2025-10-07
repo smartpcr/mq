@@ -22,7 +22,12 @@ public sealed class MessageQueueTelemetry : IMessageQueueLogger, IMessageQueueMe
     /// Initializes a new instance of the <see cref="MessageQueueTelemetry"/> class.
     /// </summary>
     /// <param name="provider">Telemetry provider to use.</param>
-    public MessageQueueTelemetry(TelemetryProvider provider)
+    /// <param name="enableOtlpExport">Enable OTLP export for OpenTelemetry.</param>
+    /// <param name="otlpEndpoint">OTLP endpoint URL.</param>
+    public MessageQueueTelemetry(
+        TelemetryProvider provider,
+        bool enableOtlpExport = true,
+        string otlpEndpoint = "http://localhost:4320")
     {
         this.provider = provider;
 
@@ -33,7 +38,7 @@ public sealed class MessageQueueTelemetry : IMessageQueueLogger, IMessageQueueMe
 
         if (provider.HasFlag(TelemetryProvider.OpenTelemetry))
         {
-            this.otelSource = new MessageQueueOpenTelemetry();
+            this.otelSource = new MessageQueueOpenTelemetry(enableOtlpExport, otlpEndpoint);
         }
     }
 

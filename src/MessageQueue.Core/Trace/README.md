@@ -56,7 +56,31 @@ telemetry.RecordMessageEnqueued("MyMessage");
 
 ### OpenTelemetry Setup
 
-When using OpenTelemetry, configure the SDK in your application startup:
+MessageQueue.Core includes built-in OTLP export support. Configure it using QueueOptions:
+
+```csharp
+using MessageQueue.Core.Options;
+using MessageQueue.Core.Trace;
+
+var options = new QueueOptions
+{
+    TelemetryProvider = TelemetryProvider.OpenTelemetry,
+    EnableOtlpExport = true,
+    OtlpEndpoint = "http://localhost:4320" // Default value
+};
+
+// Create telemetry instance with OTLP export
+using var telemetry = new MessageQueueTelemetry(
+    options.TelemetryProvider,
+    options.EnableOtlpExport,
+    options.OtlpEndpoint);
+```
+
+The OTLP exporter automatically sends traces and metrics to the configured endpoint using HTTP/Protobuf protocol. Metrics are exported every 10 seconds by default.
+
+#### Using with External OpenTelemetry Configuration
+
+If you prefer to configure OpenTelemetry in your application startup, disable built-in export:
 
 ```csharp
 using OpenTelemetry;
@@ -65,14 +89,22 @@ using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add OpenTelemetry
+var options = new QueueOptions
+{
+    TelemetryProvider = TelemetryProvider.OpenTelemetry,
+    EnableOtlpExport = false // Disable built-in export
+};
+
+// Add OpenTelemetry with your own exporters
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddSource("MessageQueue.Core")
-        .AddConsoleExporter())
+        .AddConsoleExporter()
+        .AddOtlpExporter())
     .WithMetrics(metrics => metrics
         .AddMeter("MessageQueue.Core")
-        .AddConsoleExporter());
+        .AddConsoleExporter()
+        .AddOtlpExporter());
 
 var app = builder.Build();
 ```
