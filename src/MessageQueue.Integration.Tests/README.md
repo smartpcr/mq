@@ -24,6 +24,13 @@ End-to-end integration tests covering complete workflows, stress scenarios, and 
   - Chaos testing (persistence failure, handler crash)
   - Network partition simulation
 
+- **Integration/** - End-to-end flows
+  - Full dispatch: enqueue → dispatch → acknowledge
+  - Parallelism enforcement (MaxParallelism)
+  - Timeout scenarios with cancellation
+  - Worker scaling (add/remove workers)
+  - DI scope lifecycle
+
 ## Key Test Scenarios
 
 - Full system integration with all components
@@ -44,7 +51,3 @@ dotnet test --filter "FullyQualifiedName~Stress"
 # Recovery scenarios
 dotnet test --filter "FullyQualifiedName~Recovery"
 ```
-
-## Phase
-
-**Phase 5-7** - Integration & Hardening (Weeks 5-8, Days 29-56)

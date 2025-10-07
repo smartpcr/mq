@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Integration.Tests.Phase6;
+namespace MessageQueue.Integration.Tests;
 
 using System;
 using System.Threading;
@@ -15,8 +15,8 @@ using MessageQueue.Core.Enums;
 using MessageQueue.Core.Interfaces;
 using MessageQueue.Core.Models;
 using MessageQueue.Core.Options;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]
 public class AdminOperationsTests

@@ -7,10 +7,12 @@
 namespace MessageQueue.Core.Tests;
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core;
+using MessageQueue.Core.Enums;
 using MessageQueue.Core.Interfaces;
 using MessageQueue.Core.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -152,8 +154,8 @@ public class LeaseMonitorTests
         checkedOut.Should().NotBeNull();
 
         // Act - wait for monitor to detect and requeue
-        // Wait longer than lease expiry (500ms) + check interval buffer
-        await Task.Delay(1500);
+        // Wait for: lease expiry (500ms) + monitor check (up to 1s) + processing buffer
+        await Task.Delay(2000);
 
         // Assert - message should be requeued automatically
         var checkedOut2 = await this.queueManager.CheckoutAsync<string>("worker-2");
@@ -174,19 +176,25 @@ public class LeaseMonitorTests
         await this.queueManager.EnqueueAsync("Message 2");
         await this.queueManager.EnqueueAsync("Message 3");
 
-        var msg1 = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(300));
-        var msg2 = await this.queueManager.CheckoutAsync<string>("worker-2", TimeSpan.FromMilliseconds(300));
-        var msg3 = await this.queueManager.CheckoutAsync<string>("worker-3", TimeSpan.FromMilliseconds(300));
+        var msg1 = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(600));
+        var msg2 = await this.queueManager.CheckoutAsync<string>("worker-2", TimeSpan.FromMilliseconds(600));
+        var msg3 = await this.queueManager.CheckoutAsync<string>("worker-3", TimeSpan.FromMilliseconds(600));
 
         msg1.Should().NotBeNull();
         msg2.Should().NotBeNull();
         msg3.Should().NotBeNull();
 
-        // Act - wait for all leases to expire
-        // Wait longer than lease expiry (300ms) + check interval (1s)
-        await Task.Delay(2000);
+        // Act - wait for all leases to expire and monitor to process them
+        // Wait for: lease expiry (600ms) + first check (up to 1s) + processing + buffer for all 3 messages
+        await Task.Delay(2500);
+
+        // Verify pending messages are available
+        var pending = await this.queueManager.GetPendingMessagesAsync();
+        var readyMessages = pending.Where(m => m.Status == MessageStatus.Ready).ToList();
 
         // Assert - all messages should be requeued
+        readyMessages.Should().HaveCount(3, "all messages should have been requeued by the monitor");
+
         var requeuedMsg1 = await this.queueManager.CheckoutAsync<string>("worker-4");
         var requeuedMsg2 = await this.queueManager.CheckoutAsync<string>("worker-5");
         var requeuedMsg3 = await this.queueManager.CheckoutAsync<string>("worker-6");

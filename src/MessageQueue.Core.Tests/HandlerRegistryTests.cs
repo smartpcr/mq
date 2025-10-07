@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Dispatcher.Tests.Unit;
+namespace MessageQueue.Core.Tests;
 
 using System;
 using FluentAssertions;

@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Dispatcher.Tests.Integration;
+namespace MessageQueue.Integration.Tests;
 
 using System;
 using System.Collections.Concurrent;

@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Dispatcher.Tests.Unit;
+namespace MessageQueue.Core.Tests;
 
 using System;
 using System.Threading;
@@ -12,7 +12,6 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core;
 using MessageQueue.Core.Interfaces;
-using MessageQueue.Core.Models;
 using MessageQueue.Core.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

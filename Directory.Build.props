@@ -8,9 +8,10 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
 
     <!-- Assembly info -->
-    <Product>Persistence</Product>
+    <Product>MQ</Product>
     <Company>AzureStack Compute</Company>
     <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>

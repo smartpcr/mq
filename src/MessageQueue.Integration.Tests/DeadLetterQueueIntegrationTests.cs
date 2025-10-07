@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Integration.Tests.Scenarios;
+namespace MessageQueue.Integration.Tests;
 
 using System;
 using System.Linq;

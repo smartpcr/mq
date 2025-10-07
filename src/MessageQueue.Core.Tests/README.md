@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Unit tests for core contracts, models, serialization, and dependency injection configuration.
+Unit tests for core contracts, models, serialization, dependency injection configuration, handler registry, worker infrastructure, and lease management.
 
 ## Test Categories
 
@@ -21,6 +21,20 @@ Unit tests for core contracts, models, serialization, and dependency injection c
   - Configuration binding
   - Options validation
 
+- **Unit/** - Component tests
+  - Handler registry lookup logic
+  - Configuration override behavior
+  - Channel signaling correctness
+  - Lease renewal decision logic
+  - Timeout cancellation pathways
+
+## Key Test Scenarios
+- Handler resolution from DI container
+- Channel awakening on ready messages
+- Concurrent handler execution limits
+- Timeout-triggered message requeue
+- Lease extension for long-running tasks
+
 ## Test Framework
 
 - MSTest
@@ -33,6 +47,21 @@ Unit tests for core contracts, models, serialization, and dependency injection c
 dotnet test src/MessageQueue.Core.Tests/MessageQueue.Core.Tests.csproj
 ```
 
-## Phase
+# MessageQueue.Dispatcher.Tests
 
-**Phase 1** - Foundations & Contracts (Week 1, Days 4-7)
+
+
+
+
+
+## Running Tests
+
+```bash
+# All tests
+dotnet test src/MessageQueue.Dispatcher.Tests/MessageQueue.Dispatcher.Tests.csproj
+
+# Integration flows
+dotnet test --filter "FullyQualifiedName~Integration"
+```
+
+

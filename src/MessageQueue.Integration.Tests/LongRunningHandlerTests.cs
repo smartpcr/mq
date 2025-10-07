@@ -4,10 +4,9 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Integration.Tests.Phase6;
+namespace MessageQueue.Integration.Tests;
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core;
