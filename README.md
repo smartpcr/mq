@@ -388,10 +388,10 @@ This project is currently in **active development**. Implementation follows a ph
 - [x] **Phase 3: Persistence Layer (Journal + Snapshot)** - 63/63 tests passing (100%)
 - [x] **Phase 4: Handler Dispatcher & Worker Infrastructure** - 31/31 tests passing (100%)
 - [x] **Phase 5: Retry, Lease Monitoring, and Dead-Letter Routing** - 30/30 tests passing (100%)
-- [ ] Phase 6: Handler Chaining, Long-Running Support, and Admin APIs
+- [x] **Phase 6: Handler Chaining, Long-Running Support, and Admin APIs** - 21/21 tests passing (100%)
 - [ ] Phase 7: Hardening, Observability & Final QA
 
-**Overall Progress**: 5/7 phases complete (71%) | **Tests**: 175/175 passing (100%)
+**Overall Progress**: 6/7 phases complete (86%) | **Tests**: 196/196 passing (100%)
 
 See [Implementation Plan](docs/plan.md) for detailed timeline and test coverage.
 
