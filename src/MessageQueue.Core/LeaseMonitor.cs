@@ -66,11 +66,19 @@ namespace MessageQueue.Core
 
             if (this.monitorTask != null)
             {
-                await this.monitorTask;
+                try
+                {
+                    await this.monitorTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Swallow cancellation exceptions triggered by StopAsync.
+                }
             }
 
             this.cancellationTokenSource?.Dispose();
             this.cancellationTokenSource = null;
+            this.monitorTask = null;
         }
 
         /// <inheritdoc/>
@@ -151,8 +159,15 @@ namespace MessageQueue.Core
 
             if (nextExpiry == default(DateTime))
             {
-                // No active leases, check every 5 seconds
-                return TimeSpan.FromSeconds(5);
+                // No active leases - fall back to the configured idle polling interval.
+                // Clamp to a sensible minimum so misconfiguration cannot stop monitoring entirely.
+                var idleInterval = this.options.LeaseMonitorInterval;
+                if (idleInterval <= TimeSpan.Zero)
+                {
+                    idleInterval = TimeSpan.FromSeconds(1);
+                }
+
+                return idleInterval;
             }
 
             var timeUntilExpiry = nextExpiry - now;
@@ -168,6 +183,12 @@ namespace MessageQueue.Core
             if (checkInterval > TimeSpan.FromSeconds(10))
             {
                 checkInterval = TimeSpan.FromSeconds(10);
+            }
+
+            // Never wait longer than the configured idle interval between checks.
+            if (checkInterval > this.options.LeaseMonitorInterval && this.options.LeaseMonitorInterval > TimeSpan.Zero)
+            {
+                checkInterval = this.options.LeaseMonitorInterval;
             }
 
             return checkInterval;
