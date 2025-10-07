@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="EndToEndDispatchTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Dispatcher.Tests.Integration;
 
 using System;
@@ -14,11 +20,11 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class EndToEndDispatchTests
 {
-    private IServiceProvider _serviceProvider = null!;
-    private IQueueManager _queueManager = null!;
-    private HandlerRegistry _handlerRegistry = null!;
-    private HandlerDispatcher _dispatcher = null!;
-    private IServiceScopeFactory _scopeFactory = null!;
+    private IServiceProvider serviceProvider = null!;
+    private IQueueManager queueManager = null!;
+    private HandlerRegistry handlerRegistry = null!;
+    private HandlerDispatcher dispatcher = null!;
+    private IServiceScopeFactory scopeFactory = null!;
 
     [TestInitialize]
     public void Setup()
@@ -27,8 +33,8 @@ public class EndToEndDispatchTests
         services.AddSingleton<MessageTracker>();
         services.AddTransient<TrackingMessageHandler>();
 
-        _serviceProvider = services.BuildServiceProvider();
-        _scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
+        this.serviceProvider = services.BuildServiceProvider();
+        this.scopeFactory = this.serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
         // Create queue manager
         var buffer = new CircularBuffer(100);
@@ -39,29 +45,29 @@ public class EndToEndDispatchTests
             DefaultTimeout = TimeSpan.FromMinutes(5),
             DefaultMaxRetries = 3
         };
-        _queueManager = new QueueManager(buffer, dedupIndex, queueOptions);
+        this.queueManager = new QueueManager(buffer, dedupIndex, queueOptions);
 
-        _handlerRegistry = new HandlerRegistry(_serviceProvider);
-        _dispatcher = new HandlerDispatcher(_queueManager, _handlerRegistry, _scopeFactory);
+        this.handlerRegistry = new HandlerRegistry(this.serviceProvider);
+        this.dispatcher = new HandlerDispatcher(this.queueManager, this.handlerRegistry, this.scopeFactory);
     }
 
     [TestCleanup]
     public async Task Cleanup()
     {
-        if (_dispatcher != null)
+        if (this.dispatcher != null)
         {
-            await _dispatcher.StopAsync();
+            await this.dispatcher.StopAsync();
         }
-        (_serviceProvider as IDisposable)?.Dispose();
+        (this.serviceProvider as IDisposable)?.Dispose();
     }
 
     [TestMethod]
     public async Task EndToEnd_EnqueueAndProcess_MessageIsHandled()
     {
         // Arrange
-        var tracker = _serviceProvider.GetRequiredService<MessageTracker>();
+        var tracker = this.serviceProvider.GetRequiredService<MessageTracker>();
 
-        _handlerRegistry.RegisterHandler<TestMessage, TrackingMessageHandler>(new HandlerOptions<TestMessage>
+        this.handlerRegistry.RegisterHandler<TestMessage, TrackingMessageHandler>(new HandlerOptions<TestMessage>
         {
             MinParallelism = 1,
             MaxParallelism = 5,
@@ -69,12 +75,12 @@ public class EndToEndDispatchTests
             LeaseDuration = TimeSpan.FromMinutes(1)
         });
 
-        await _dispatcher.StartAsync();
+        await this.dispatcher.StartAsync();
 
         // Act
         var message = new TestMessage { Id = Guid.NewGuid(), Content = "Test Message" };
-        await _queueManager.EnqueueAsync(message);
-        _dispatcher.SignalMessageReady(typeof(TestMessage));
+        await this.queueManager.EnqueueAsync(message);
+        this.dispatcher.SignalMessageReady(typeof(TestMessage));
 
         // Wait for processing
         await Task.Delay(500);
@@ -83,7 +89,7 @@ public class EndToEndDispatchTests
         tracker.ProcessedMessages.Should().ContainKey(message.Id);
         tracker.ProcessedMessages[message.Id].Should().Be(message.Content);
 
-        var stats = await _dispatcher.GetStatisticsAsync(typeof(TestMessage));
+        var stats = await this.dispatcher.GetStatisticsAsync(typeof(TestMessage));
         stats.TotalProcessed.Should().BeGreaterOrEqualTo(1);
     }
 
@@ -91,9 +97,9 @@ public class EndToEndDispatchTests
     public async Task EndToEnd_MultipleMessages_AllProcessed()
     {
         // Arrange
-        var tracker = _serviceProvider.GetRequiredService<MessageTracker>();
+        var tracker = this.serviceProvider.GetRequiredService<MessageTracker>();
 
-        _handlerRegistry.RegisterHandler<TestMessage, TrackingMessageHandler>(new HandlerOptions<TestMessage>
+        this.handlerRegistry.RegisterHandler<TestMessage, TrackingMessageHandler>(new HandlerOptions<TestMessage>
         {
             MinParallelism = 2,
             MaxParallelism = 5,
@@ -101,7 +107,7 @@ public class EndToEndDispatchTests
             LeaseDuration = TimeSpan.FromMinutes(1)
         });
 
-        await _dispatcher.StartAsync();
+        await this.dispatcher.StartAsync();
 
         // Act - enqueue multiple messages
         var messageCount = 10;
@@ -111,8 +117,8 @@ public class EndToEndDispatchTests
         {
             var message = new TestMessage { Id = Guid.NewGuid(), Content = $"Message {i}" };
             messageIds[i] = message.Id;
-            await _queueManager.EnqueueAsync(message);
-            _dispatcher.SignalMessageReady(typeof(TestMessage));
+            await this.queueManager.EnqueueAsync(message);
+            this.dispatcher.SignalMessageReady(typeof(TestMessage));
         }
 
         // Wait for processing
@@ -125,7 +131,7 @@ public class EndToEndDispatchTests
             tracker.ProcessedMessages.Should().ContainKey(messageId);
         }
 
-        var stats = await _dispatcher.GetStatisticsAsync(typeof(TestMessage));
+        var stats = await this.dispatcher.GetStatisticsAsync(typeof(TestMessage));
         stats.TotalProcessed.Should().Be(messageCount);
     }
 
@@ -133,9 +139,9 @@ public class EndToEndDispatchTests
     public async Task EndToEnd_ParallelProcessing_MessagesConcurrentlyProcessed()
     {
         // Arrange
-        var tracker = _serviceProvider.GetRequiredService<MessageTracker>();
+        var tracker = this.serviceProvider.GetRequiredService<MessageTracker>();
 
-        _handlerRegistry.RegisterHandler<SlowTestMessage, SlowTrackingMessageHandler>(new HandlerOptions<SlowTestMessage>
+        this.handlerRegistry.RegisterHandler<SlowTestMessage, SlowTrackingMessageHandler>(new HandlerOptions<SlowTestMessage>
         {
             MinParallelism = 3,
             MaxParallelism = 5,
@@ -150,7 +156,7 @@ public class EndToEndDispatchTests
         var sp = services.BuildServiceProvider();
         var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
         var registry = new HandlerRegistry(sp);
-        var dispatcher = new HandlerDispatcher(_queueManager, registry, scopeFactory);
+        var dispatcher = new HandlerDispatcher(this.queueManager, registry, scopeFactory);
 
         registry.RegisterHandler<SlowTestMessage, SlowTrackingMessageHandler>(new HandlerOptions<SlowTestMessage>
         {
@@ -167,7 +173,7 @@ public class EndToEndDispatchTests
         for (int i = 0; i < messageCount; i++)
         {
             var message = new SlowTestMessage { Id = Guid.NewGuid(), Content = $"Slow {i}", DelayMs = 300 };
-            await _queueManager.EnqueueAsync(message);
+            await this.queueManager.EnqueueAsync(message);
             dispatcher.SignalMessageReady(typeof(SlowTestMessage));
         }
 
@@ -186,7 +192,7 @@ public class EndToEndDispatchTests
     public async Task EndToEnd_HandlerTimeout_MessageRequeued()
     {
         // Arrange
-        var tracker = _serviceProvider.GetRequiredService<MessageTracker>();
+        var tracker = this.serviceProvider.GetRequiredService<MessageTracker>();
 
         // Register handler with very short timeout
         var services = new ServiceCollection();
@@ -195,7 +201,7 @@ public class EndToEndDispatchTests
         var sp = services.BuildServiceProvider();
         var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
         var registry = new HandlerRegistry(sp);
-        var dispatcher = new HandlerDispatcher(_queueManager, registry, scopeFactory);
+        var dispatcher = new HandlerDispatcher(this.queueManager, registry, scopeFactory);
 
         registry.RegisterHandler<SlowTestMessage, SlowTrackingMessageHandler>(new HandlerOptions<SlowTestMessage>
         {
@@ -209,7 +215,7 @@ public class EndToEndDispatchTests
 
         // Act - enqueue message that takes longer than timeout
         var message = new SlowTestMessage { Id = Guid.NewGuid(), Content = "Timeout Test", DelayMs = 500 };
-        await _queueManager.EnqueueAsync(message);
+        await this.queueManager.EnqueueAsync(message);
         dispatcher.SignalMessageReady(typeof(SlowTestMessage));
 
         // Wait for timeout and requeue
@@ -227,9 +233,9 @@ public class EndToEndDispatchTests
     public async Task EndToEnd_Deduplication_DuplicateMessagesSuperseded()
     {
         // Arrange
-        var tracker = _serviceProvider.GetRequiredService<MessageTracker>();
+        var tracker = this.serviceProvider.GetRequiredService<MessageTracker>();
 
-        _handlerRegistry.RegisterHandler<TestMessage, TrackingMessageHandler>(new HandlerOptions<TestMessage>
+        this.handlerRegistry.RegisterHandler<TestMessage, TrackingMessageHandler>(new HandlerOptions<TestMessage>
         {
             MinParallelism = 1,
             MaxParallelism = 5,
@@ -237,17 +243,17 @@ public class EndToEndDispatchTests
             LeaseDuration = TimeSpan.FromMinutes(1)
         });
 
-        await _dispatcher.StartAsync();
+        await this.dispatcher.StartAsync();
 
         // Act - enqueue duplicate messages with same dedup key
         var dedupKey = "unique-key-1";
         var message1 = new TestMessage { Id = Guid.NewGuid(), Content = "Version 1" };
         var message2 = new TestMessage { Id = Guid.NewGuid(), Content = "Version 2" };
 
-        await _queueManager.EnqueueAsync(message1, dedupKey);
-        await _queueManager.EnqueueAsync(message2, dedupKey); // Should supersede message1
+        await this.queueManager.EnqueueAsync(message1, dedupKey);
+        await this.queueManager.EnqueueAsync(message2, dedupKey); // Should supersede message1
 
-        _dispatcher.SignalMessageReady(typeof(TestMessage));
+        this.dispatcher.SignalMessageReady(typeof(TestMessage));
 
         // Wait for processing
         await Task.Delay(500);
@@ -285,33 +291,33 @@ public class EndToEndDispatchTests
     // Test handler implementations
     public class TrackingMessageHandler : IMessageHandler<TestMessage>
     {
-        private readonly MessageTracker _tracker;
+        private readonly MessageTracker tracker;
 
         public TrackingMessageHandler(MessageTracker tracker)
         {
-            _tracker = tracker;
+            this.tracker = tracker;
         }
 
         public Task HandleAsync(TestMessage message, CancellationToken cancellationToken)
         {
-            _tracker.ProcessedMessages[message.Id] = message.Content;
+            this.tracker.ProcessedMessages[message.Id] = message.Content;
             return Task.CompletedTask;
         }
     }
 
     public class SlowTrackingMessageHandler : IMessageHandler<SlowTestMessage>
     {
-        private readonly MessageTracker _tracker;
+        private readonly MessageTracker tracker;
 
         public SlowTrackingMessageHandler(MessageTracker tracker)
         {
-            _tracker = tracker;
+            this.tracker = tracker;
         }
 
         public async Task HandleAsync(SlowTestMessage message, CancellationToken cancellationToken)
         {
             await Task.Delay(message.DelayMs, cancellationToken);
-            _tracker.ProcessedMessages[message.Id] = message.Content;
+            this.tracker.ProcessedMessages[message.Id] = message.Content;
         }
     }
 }

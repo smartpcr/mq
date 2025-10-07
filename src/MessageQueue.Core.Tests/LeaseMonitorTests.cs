@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="LeaseMonitorTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core.Tests;
 
 using System;
@@ -12,16 +18,16 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class LeaseMonitorTests
 {
-    private IQueueManager _queueManager = null!;
-    private LeaseMonitor _leaseMonitor = null!;
-    private QueueOptions _options = null!;
+    private IQueueManager queueManager = null!;
+    private LeaseMonitor leaseMonitor = null!;
+    private QueueOptions options = null!;
 
     [TestInitialize]
     public void Setup()
     {
         var buffer = new CircularBuffer(100);
         var dedupIndex = new DeduplicationIndex();
-        _options = new QueueOptions
+        this.options = new QueueOptions
         {
             Capacity = 100,
             DefaultTimeout = TimeSpan.FromSeconds(1),
@@ -30,16 +36,16 @@ public class LeaseMonitorTests
 
         // For LeaseMonitor tests, we don't need DLQ functionality
         // Pass null for DLQ to avoid circular dependency issues
-        _queueManager = new QueueManager(buffer, dedupIndex, _options, null, null);
-        _leaseMonitor = new LeaseMonitor(_queueManager, _options);
+        this.queueManager = new QueueManager(buffer, dedupIndex, this.options, null, null);
+        this.leaseMonitor = new LeaseMonitor(this.queueManager, this.options);
     }
 
     [TestCleanup]
     public async Task Cleanup()
     {
-        if (_leaseMonitor != null)
+        if (this.leaseMonitor != null)
         {
-            await _leaseMonitor.StopAsync();
+            await this.leaseMonitor.StopAsync();
         }
     }
 
@@ -47,31 +53,31 @@ public class LeaseMonitorTests
     public async Task StartAsync_StartsMonitor()
     {
         // Act
-        await _leaseMonitor.StartAsync();
+        await this.leaseMonitor.StartAsync();
 
         // Assert - no exception
-        await _leaseMonitor.StopAsync();
+        await this.leaseMonitor.StopAsync();
     }
 
     [TestMethod]
     public async Task StartAsync_WhenAlreadyRunning_ThrowsException()
     {
         // Arrange
-        await _leaseMonitor.StartAsync();
+        await this.leaseMonitor.StartAsync();
 
         // Act & Assert
-        var act = async () => await _leaseMonitor.StartAsync();
+        var act = async () => await this.leaseMonitor.StartAsync();
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Lease monitor is already running.");
 
-        await _leaseMonitor.StopAsync();
+        await this.leaseMonitor.StopAsync();
     }
 
     [TestMethod]
     public async Task StopAsync_WhenNotRunning_DoesNotThrow()
     {
         // Act & Assert
-        var act = async () => await _leaseMonitor.StopAsync();
+        var act = async () => await this.leaseMonitor.StopAsync();
         await act.Should().NotThrowAsync();
     }
 
@@ -79,18 +85,18 @@ public class LeaseMonitorTests
     public async Task CheckExpiredLeasesAsync_RequeulesExpiredMessages()
     {
         // Arrange
-        var messageId = await _queueManager.EnqueueAsync("Test message");
-        var checkedOut = await _queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(100));
+        var messageId = await this.queueManager.EnqueueAsync("Test message");
+        var checkedOut = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(100));
         checkedOut.Should().NotBeNull();
 
         // Wait for lease to expire
         await Task.Delay(150);
 
         // Act
-        await _leaseMonitor.CheckExpiredLeasesAsync();
+        await this.leaseMonitor.CheckExpiredLeasesAsync();
 
         // Assert - message should be back in Ready state
-        var checkedOut2 = await _queueManager.CheckoutAsync<string>("worker-2");
+        var checkedOut2 = await this.queueManager.CheckoutAsync<string>("worker-2");
         checkedOut2.Should().NotBeNull();
         checkedOut2.Message.Should().Be("Test message");
     }
@@ -99,15 +105,15 @@ public class LeaseMonitorTests
     public async Task CheckExpiredLeasesAsync_IgnoresActiveLeases()
     {
         // Arrange
-        var messageId = await _queueManager.EnqueueAsync("Test message");
-        var checkedOut = await _queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMinutes(5));
+        var messageId = await this.queueManager.EnqueueAsync("Test message");
+        var checkedOut = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMinutes(5));
         checkedOut.Should().NotBeNull();
 
         // Act
-        await _leaseMonitor.CheckExpiredLeasesAsync();
+        await this.leaseMonitor.CheckExpiredLeasesAsync();
 
         // Assert - message should still be checked out
-        var checkedOut2 = await _queueManager.CheckoutAsync<string>("worker-2");
+        var checkedOut2 = await this.queueManager.CheckoutAsync<string>("worker-2");
         checkedOut2.Should().BeNull(); // No messages available
     }
 
@@ -115,22 +121,22 @@ public class LeaseMonitorTests
     public async Task ExtendLeaseAsync_ExtendsMessageLease()
     {
         // Arrange
-        var messageId = await _queueManager.EnqueueAsync("Test message");
-        var checkedOut = await _queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(200));
+        var messageId = await this.queueManager.EnqueueAsync("Test message");
+        var checkedOut = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(200));
         checkedOut.Should().NotBeNull();
 
         // Wait 100ms
         await Task.Delay(100);
 
         // Act - extend lease
-        await _leaseMonitor.ExtendLeaseAsync(messageId, TimeSpan.FromMinutes(1));
+        await this.leaseMonitor.ExtendLeaseAsync(messageId, TimeSpan.FromMinutes(1));
 
         // Wait another 150ms (original would have expired)
         await Task.Delay(150);
 
         // Assert - message should still be checked out (not expired)
-        await _leaseMonitor.CheckExpiredLeasesAsync();
-        var checkedOut2 = await _queueManager.CheckoutAsync<string>("worker-2");
+        await this.leaseMonitor.CheckExpiredLeasesAsync();
+        var checkedOut2 = await this.queueManager.CheckoutAsync<string>("worker-2");
         checkedOut2.Should().BeNull(); // Still checked out
     }
 
@@ -138,10 +144,10 @@ public class LeaseMonitorTests
     public async Task MonitorLoop_AutomaticallyChecksExpiredLeases()
     {
         // Arrange
-        await _leaseMonitor.StartAsync();
+        await this.leaseMonitor.StartAsync();
 
-        var messageId = await _queueManager.EnqueueAsync("Test message");
-        var checkedOut = await _queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(500));
+        var messageId = await this.queueManager.EnqueueAsync("Test message");
+        var checkedOut = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(500));
         checkedOut.Should().NotBeNull();
 
         // Act - wait for monitor to detect and requeue
@@ -149,27 +155,27 @@ public class LeaseMonitorTests
         await Task.Delay(1500);
 
         // Assert - message should be requeued automatically
-        var checkedOut2 = await _queueManager.CheckoutAsync<string>("worker-2");
+        var checkedOut2 = await this.queueManager.CheckoutAsync<string>("worker-2");
         checkedOut2.Should().NotBeNull();
         checkedOut2.Message.Should().Be("Test message");
 
-        await _leaseMonitor.StopAsync();
+        await this.leaseMonitor.StopAsync();
     }
 
     [TestMethod]
     public async Task MonitorLoop_HandlesMultipleExpiredLeases()
     {
         // Arrange
-        await _leaseMonitor.StartAsync();
+        await this.leaseMonitor.StartAsync();
 
         // Enqueue and checkout multiple messages
-        await _queueManager.EnqueueAsync("Message 1");
-        await _queueManager.EnqueueAsync("Message 2");
-        await _queueManager.EnqueueAsync("Message 3");
+        await this.queueManager.EnqueueAsync("Message 1");
+        await this.queueManager.EnqueueAsync("Message 2");
+        await this.queueManager.EnqueueAsync("Message 3");
 
-        var msg1 = await _queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(300));
-        var msg2 = await _queueManager.CheckoutAsync<string>("worker-2", TimeSpan.FromMilliseconds(300));
-        var msg3 = await _queueManager.CheckoutAsync<string>("worker-3", TimeSpan.FromMilliseconds(300));
+        var msg1 = await this.queueManager.CheckoutAsync<string>("worker-1", TimeSpan.FromMilliseconds(300));
+        var msg2 = await this.queueManager.CheckoutAsync<string>("worker-2", TimeSpan.FromMilliseconds(300));
+        var msg3 = await this.queueManager.CheckoutAsync<string>("worker-3", TimeSpan.FromMilliseconds(300));
 
         msg1.Should().NotBeNull();
         msg2.Should().NotBeNull();
@@ -180,14 +186,14 @@ public class LeaseMonitorTests
         await Task.Delay(2000);
 
         // Assert - all messages should be requeued
-        var requeuedMsg1 = await _queueManager.CheckoutAsync<string>("worker-4");
-        var requeuedMsg2 = await _queueManager.CheckoutAsync<string>("worker-5");
-        var requeuedMsg3 = await _queueManager.CheckoutAsync<string>("worker-6");
+        var requeuedMsg1 = await this.queueManager.CheckoutAsync<string>("worker-4");
+        var requeuedMsg2 = await this.queueManager.CheckoutAsync<string>("worker-5");
+        var requeuedMsg3 = await this.queueManager.CheckoutAsync<string>("worker-6");
 
         requeuedMsg1.Should().NotBeNull();
         requeuedMsg2.Should().NotBeNull();
         requeuedMsg3.Should().NotBeNull();
 
-        await _leaseMonitor.StopAsync();
+        await this.leaseMonitor.StopAsync();
     }
 }

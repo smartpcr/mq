@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="PersistenceBenchmarks.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using MessageQueue.Core;
@@ -15,11 +21,11 @@ namespace MessageQueue.Performance.Tests;
 [RankColumn]
 public class PersistenceBenchmarks
 {
-    private IQueueManager _queueManager = null!;
-    private ICircularBuffer _buffer = null!;
-    private DeduplicationIndex _deduplicationIndex = null!;
-    private IPersister _persister = null!;
-    private string _testDirectory = null!;
+    private IQueueManager queueManager = null!;
+    private ICircularBuffer buffer = null!;
+    private DeduplicationIndex deduplicationIndex = null!;
+    private IPersister persister = null!;
+    private string testDirectory = null!;
 
     [Params(100, 1000, 10000)]
     public int MessageCount { get; set; }
@@ -27,12 +33,12 @@ public class PersistenceBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _testDirectory = Path.Combine(Path.GetTempPath(), $"perf-test-{Guid.NewGuid()}");
-        Directory.CreateDirectory(_testDirectory);
+        this.testDirectory = Path.Combine(Path.GetTempPath(), $"perf-test-{Guid.NewGuid()}");
+        Directory.CreateDirectory(this.testDirectory);
 
         var persistenceOptions = new PersistenceOptions
         {
-            StoragePath = _testDirectory,
+            StoragePath = this.testDirectory,
             JournalFileName = "journal.dat",
             SnapshotInterval = TimeSpan.FromHours(1), // Don't trigger during benchmark
             SnapshotThreshold = 1000000
@@ -45,23 +51,23 @@ public class PersistenceBenchmarks
             EnableDeduplication = true
         };
 
-        _buffer = new CircularBuffer(queueOptions.Capacity);
-        _deduplicationIndex = new DeduplicationIndex();
-        _persister = new FilePersister(persistenceOptions);
-        _queueManager = new QueueManager(_buffer, _deduplicationIndex, queueOptions, _persister);
+        this.buffer = new CircularBuffer(queueOptions.Capacity);
+        this.deduplicationIndex = new DeduplicationIndex();
+        this.persister = new FilePersister(persistenceOptions);
+        this.queueManager = new QueueManager(this.buffer, this.deduplicationIndex, queueOptions, this.persister);
     }
 
     [GlobalCleanup]
     public void Cleanup()
     {
-        if (_persister is IDisposable disposable)
+        if (this.persister is IDisposable disposable)
         {
             disposable.Dispose();
         }
 
-        if (Directory.Exists(_testDirectory))
+        if (Directory.Exists(this.testDirectory))
         {
-            Directory.Delete(_testDirectory, true);
+            Directory.Delete(this.testDirectory, true);
         }
     }
 
@@ -70,7 +76,7 @@ public class PersistenceBenchmarks
     {
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
+            await this.queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
         }
     }
 
@@ -80,12 +86,12 @@ public class PersistenceBenchmarks
         // First populate the queue
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
+            await this.queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
         }
 
         // Benchmark snapshot creation
-        var snapshot = await _queueManager.CreateSnapshotAsync();
-        await _persister.CreateSnapshotAsync(snapshot);
+        var snapshot = await this.queueManager.CreateSnapshotAsync();
+        await this.persister.CreateSnapshotAsync(snapshot);
     }
 
     [Benchmark(Description = "Journal replay")]
@@ -94,11 +100,11 @@ public class PersistenceBenchmarks
         // First create some journal entries
         for (int i = 0; i < MessageCount; i++)
         {
-            await _queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
+            await this.queueManager.EnqueueAsync(new TestMessage { Id = i, Data = $"Message {i}" });
         }
 
         // Benchmark journal replay
-        var operations = await _persister.ReplayJournalAsync(0);
+        var operations = await this.persister.ReplayJournalAsync(0);
         var count = operations.Count();
     }
 

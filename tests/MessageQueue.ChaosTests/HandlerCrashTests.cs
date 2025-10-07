@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="HandlerCrashTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using FluentAssertions;
 using MessageQueue.Core;
 using MessageQueue.Core.Interfaces;

@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="JournalSerializer.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Persistence.Serialization;
 
 using System;

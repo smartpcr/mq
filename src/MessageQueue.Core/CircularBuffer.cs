@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="CircularBuffer.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core;
 
 using System;
@@ -14,10 +20,10 @@ using MessageQueue.Core.Models;
 /// </summary>
 public class CircularBuffer : ICircularBuffer
 {
-    private readonly MessageEnvelope?[] _slots;
-    private readonly int _capacity;
-    private long _writePosition;
-    private long _readPosition;
+    private readonly MessageEnvelope?[] slots;
+    private readonly int capacity;
+    private long writePosition;
+    private long readPosition;
 
     /// <summary>
     /// Initializes a new instance of the CircularBuffer.
@@ -28,10 +34,10 @@ public class CircularBuffer : ICircularBuffer
         if (capacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity must be greater than zero.");
 
-        _capacity = capacity;
-        _slots = new MessageEnvelope?[capacity];
-        _writePosition = 0;
-        _readPosition = 0;
+        this.capacity = capacity;
+        this.slots = new MessageEnvelope?[capacity];
+        this.writePosition = 0;
+        this.readPosition = 0;
     }
 
     /// <inheritdoc/>
@@ -45,56 +51,56 @@ public class CircularBuffer : ICircularBuffer
         envelope.Status = MessageStatus.Ready;
 
         // Try to find an empty slot first
-        for (int attempt = 0; attempt < _capacity; attempt++)
+        for (int attempt = 0; attempt < this.capacity; attempt++)
         {
-            long currentWrite = Interlocked.Read(ref _writePosition);
-            int slotIndex = (int)(currentWrite % _capacity);
+            long currentWrite = Interlocked.Read(ref this.writePosition);
+            int slotIndex = (int)(currentWrite % this.capacity);
 
             // Try to claim this slot with CAS (null = empty slot)
-            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, null);
+            var currentSlot = Interlocked.CompareExchange(ref this.slots[slotIndex], envelope, null);
 
             if (currentSlot == null)
             {
                 // Successfully claimed an empty slot
-                Interlocked.Increment(ref _writePosition);
+                Interlocked.Increment(ref this.writePosition);
                 return Task.FromResult(true);
             }
 
             // If slot is occupied, try next position
-            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+            Interlocked.CompareExchange(ref this.writePosition, currentWrite + 1, currentWrite);
         }
 
         // Buffer is full - drop oldest message (overwrite at write position)
         // Find the oldest Ready message to drop
-        for (int attempt = 0; attempt < _capacity; attempt++)
+        for (int attempt = 0; attempt < this.capacity; attempt++)
         {
-            long currentWrite = Interlocked.Read(ref _writePosition);
-            int slotIndex = (int)(currentWrite % _capacity);
+            long currentWrite = Interlocked.Read(ref this.writePosition);
+            int slotIndex = (int)(currentWrite % this.capacity);
 
-            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], null, null);
+            var currentSlot = Interlocked.CompareExchange(ref this.slots[slotIndex], null, null);
 
             // Only drop Ready messages (not in-flight)
             if (currentSlot != null && currentSlot.Status == MessageStatus.Ready)
             {
                 // Try to replace with new message
-                var replaced = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, currentSlot);
+                var replaced = Interlocked.CompareExchange(ref this.slots[slotIndex], envelope, currentSlot);
                 if (ReferenceEquals(replaced, currentSlot))
                 {
                     // Successfully dropped oldest and added new
-                    Interlocked.Increment(ref _writePosition);
+                    Interlocked.Increment(ref this.writePosition);
                     return Task.FromResult(true);
                 }
             }
 
             // Try next slot
-            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+            Interlocked.CompareExchange(ref this.writePosition, currentWrite + 1, currentWrite);
         }
 
         // If we can't drop any Ready messages (all are in-flight), force overwrite at write position
-        long finalWrite = Interlocked.Read(ref _writePosition);
-        int finalSlot = (int)(finalWrite % _capacity);
-        Interlocked.Exchange(ref _slots[finalSlot], envelope);
-        Interlocked.Increment(ref _writePosition);
+        long finalWrite = Interlocked.Read(ref this.writePosition);
+        int finalSlot = (int)(finalWrite % this.capacity);
+        Interlocked.Exchange(ref this.slots[finalSlot], envelope);
+        Interlocked.Increment(ref this.writePosition);
 
         return Task.FromResult(true);
     }
@@ -112,12 +118,12 @@ public class CircularBuffer : ICircularBuffer
         string targetMessageType = messageType.FullName ?? messageType.Name;
 
         // Scan for a ready message of the requested type
-        for (int attempt = 0; attempt < _capacity; attempt++)
+        for (int attempt = 0; attempt < this.capacity; attempt++)
         {
-            long currentRead = Interlocked.Read(ref _readPosition);
-            int slotIndex = (int)(currentRead % _capacity);
+            long currentRead = Interlocked.Read(ref this.readPosition);
+            int slotIndex = (int)(currentRead % this.capacity);
 
-            var envelope = Interlocked.CompareExchange(ref _slots[slotIndex], null, null); // Read current value
+            var envelope = Interlocked.CompareExchange(ref this.slots[slotIndex], null, null); // Read current value
 
             if (envelope != null &&
                 envelope.Status == MessageStatus.Ready &&
@@ -152,7 +158,7 @@ public class CircularBuffer : ICircularBuffer
                 };
 
                 // Try to replace with CAS
-                var original = Interlocked.CompareExchange(ref _slots[slotIndex], updatedEnvelope, envelope);
+                var original = Interlocked.CompareExchange(ref this.slots[slotIndex], updatedEnvelope, envelope);
                 if (ReferenceEquals(original, envelope))
                 {
                     // Successfully checked out
@@ -161,7 +167,7 @@ public class CircularBuffer : ICircularBuffer
             }
 
             // Move to next slot
-            Interlocked.CompareExchange(ref _readPosition, currentRead + 1, currentRead);
+            Interlocked.CompareExchange(ref this.readPosition, currentRead + 1, currentRead);
         }
 
         // No ready message found
@@ -179,9 +185,9 @@ public class CircularBuffer : ICircularBuffer
         cancellationToken.ThrowIfCancellationRequested();
 
         // Find existing message with matching deduplication key
-        for (int i = 0; i < _capacity; i++)
+        for (int i = 0; i < this.capacity; i++)
         {
-            var existing = Interlocked.CompareExchange(ref _slots[i], null, null); // Read current value
+            var existing = Interlocked.CompareExchange(ref this.slots[i], null, null); // Read current value
 
             if (existing != null &&
                 existing.DeduplicationKey == deduplicationKey &&
@@ -205,11 +211,11 @@ public class CircularBuffer : ICircularBuffer
                 };
 
                 // Try to mark as superseded
-                var original = Interlocked.CompareExchange(ref _slots[i], superseded, existing);
+                var original = Interlocked.CompareExchange(ref this.slots[i], superseded, existing);
                 if (ReferenceEquals(original, existing))
                 {
                     // Successfully superseded, now enqueue the new message
-                    return EnqueueAsync(envelope, cancellationToken);
+                    return this.EnqueueAsync(envelope, cancellationToken);
                 }
             }
         }
@@ -224,14 +230,14 @@ public class CircularBuffer : ICircularBuffer
         cancellationToken.ThrowIfCancellationRequested();
 
         // Find message by ID and remove it directly
-        for (int i = 0; i < _capacity; i++)
+        for (int i = 0; i < this.capacity; i++)
         {
-            var envelope = Interlocked.CompareExchange(ref _slots[i], null, null); // Read current value
+            var envelope = Interlocked.CompareExchange(ref this.slots[i], null, null); // Read current value
 
             if (envelope != null && envelope.MessageId == messageId)
             {
                 // Directly remove the message from the slot with CAS
-                var original = Interlocked.CompareExchange(ref _slots[i], null, envelope);
+                var original = Interlocked.CompareExchange(ref this.slots[i], null, envelope);
                 if (ReferenceEquals(original, envelope))
                 {
                     // Successfully acknowledged and removed
@@ -251,15 +257,15 @@ public class CircularBuffer : ICircularBuffer
         MessageEnvelope envelope = null;
 
         // Find the message
-        for (int i = 0; i < _capacity; i++)
+        for (int i = 0; i < this.capacity; i++)
         {
-            var existing = Interlocked.CompareExchange(ref _slots[i], null, null); // Read current value
+            var existing = Interlocked.CompareExchange(ref this.slots[i], null, null); // Read current value
 
             if (existing != null && existing.MessageId == messageId)
             {
                 envelope = existing;
                 // Clear the slot
-                Interlocked.CompareExchange(ref _slots[i], null, existing);
+                Interlocked.CompareExchange(ref this.slots[i], null, existing);
                 break;
             }
         }
@@ -284,14 +290,14 @@ public class CircularBuffer : ICircularBuffer
             IsSuperseded = envelope.IsSuperseded
         };
 
-        return EnqueueAsync(requeued, cancellationToken);
+        return this.EnqueueAsync(requeued, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public int Capacity => _capacity;
+    public int Capacity => this.capacity;
 
     /// <inheritdoc/>
-    public int Count => _slots.Count(slot => slot != null &&
+    public int Count => this.slots.Count(slot => slot != null &&
         (slot.Status == MessageStatus.Ready || slot.Status == MessageStatus.InFlight));
 
     /// <inheritdoc/>
@@ -299,7 +305,7 @@ public class CircularBuffer : ICircularBuffer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        int count = _slots.Count(slot => slot != null &&
+        int count = this.slots.Count(slot => slot != null &&
             (slot.Status == MessageStatus.Ready || slot.Status == MessageStatus.InFlight));
 
         return Task.FromResult(count);
@@ -310,7 +316,7 @@ public class CircularBuffer : ICircularBuffer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var messages = _slots
+        var messages = this.slots
             .Where(slot => slot != null && slot.Status != MessageStatus.Completed)
             .ToArray()!;
 
@@ -322,14 +328,14 @@ public class CircularBuffer : ICircularBuffer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        for (int i = 0; i < _capacity; i++)
+        for (int i = 0; i < this.capacity; i++)
         {
-            var envelope = Interlocked.CompareExchange(ref _slots[i], null, null); // Read current value
+            var envelope = Interlocked.CompareExchange(ref this.slots[i], null, null); // Read current value
 
             if (envelope != null && envelope.MessageId == messageId)
             {
                 // Try to remove with CAS
-                var original = Interlocked.CompareExchange(ref _slots[i], null, envelope);
+                var original = Interlocked.CompareExchange(ref this.slots[i], null, envelope);
                 if (ReferenceEquals(original, envelope))
                 {
                     return Task.FromResult(true);
@@ -351,53 +357,53 @@ public class CircularBuffer : ICircularBuffer
         // DO NOT modify the envelope's status or lease - preserve as-is for recovery
 
         // Try to find an empty slot
-        for (int attempt = 0; attempt < _capacity; attempt++)
+        for (int attempt = 0; attempt < this.capacity; attempt++)
         {
-            long currentWrite = Interlocked.Read(ref _writePosition);
-            int slotIndex = (int)(currentWrite % _capacity);
+            long currentWrite = Interlocked.Read(ref this.writePosition);
+            int slotIndex = (int)(currentWrite % this.capacity);
 
             // Try to claim this slot with CAS (null = empty slot)
-            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, null);
+            var currentSlot = Interlocked.CompareExchange(ref this.slots[slotIndex], envelope, null);
 
             if (currentSlot == null)
             {
                 // Successfully claimed an empty slot
-                Interlocked.Increment(ref _writePosition);
+                Interlocked.Increment(ref this.writePosition);
                 return Task.FromResult(true);
             }
 
             // If slot is occupied, try next position
-            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+            Interlocked.CompareExchange(ref this.writePosition, currentWrite + 1, currentWrite);
         }
 
         // Buffer is full - find a slot to overwrite (prefer empty or Completed messages)
-        for (int attempt = 0; attempt < _capacity; attempt++)
+        for (int attempt = 0; attempt < this.capacity; attempt++)
         {
-            long currentWrite = Interlocked.Read(ref _writePosition);
-            int slotIndex = (int)(currentWrite % _capacity);
+            long currentWrite = Interlocked.Read(ref this.writePosition);
+            int slotIndex = (int)(currentWrite % this.capacity);
 
-            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], null, null);
+            var currentSlot = Interlocked.CompareExchange(ref this.slots[slotIndex], null, null);
 
             // Prefer to overwrite Completed or null messages
             if (currentSlot == null || currentSlot.Status == MessageStatus.Completed)
             {
-                var replaced = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, currentSlot);
+                var replaced = Interlocked.CompareExchange(ref this.slots[slotIndex], envelope, currentSlot);
                 if (ReferenceEquals(replaced, currentSlot))
                 {
-                    Interlocked.Increment(ref _writePosition);
+                    Interlocked.Increment(ref this.writePosition);
                     return Task.FromResult(true);
                 }
             }
 
             // Try next slot
-            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+            Interlocked.CompareExchange(ref this.writePosition, currentWrite + 1, currentWrite);
         }
 
         // Last resort: overwrite at write position
-        long finalWrite = Interlocked.Read(ref _writePosition);
-        int finalSlot = (int)(finalWrite % _capacity);
-        Interlocked.Exchange(ref _slots[finalSlot], envelope);
-        Interlocked.Increment(ref _writePosition);
+        long finalWrite = Interlocked.Read(ref this.writePosition);
+        int finalSlot = (int)(finalWrite % this.capacity);
+        Interlocked.Exchange(ref this.slots[finalSlot], envelope);
+        Interlocked.Increment(ref this.writePosition);
 
         return Task.FromResult(true);
     }

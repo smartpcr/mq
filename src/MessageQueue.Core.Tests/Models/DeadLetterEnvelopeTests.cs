@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="DeadLetterEnvelopeTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core.Tests.Models;
 
 using System.Text.Json;

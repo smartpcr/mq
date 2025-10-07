@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="CrashRecoveryTests.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Persistence.Tests.Integration;
 
 using System;
@@ -15,21 +21,21 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 [TestClass]
 public class CrashRecoveryTests
 {
-    private string _testStoragePath = null!;
-    private PersistenceOptions _persistenceOptions = null!;
-    private QueueOptions _queueOptions = null!;
+    private string testStoragePath = null!;
+    private PersistenceOptions persistenceOptions = null!;
+    private QueueOptions queueOptions = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _testStoragePath = Path.Combine(Path.GetTempPath(), $"mq-recovery-test-{Guid.NewGuid()}");
-        _persistenceOptions = new PersistenceOptions
+        this.testStoragePath = Path.Combine(Path.GetTempPath(), $"mq-recovery-test-{Guid.NewGuid()}");
+        this.persistenceOptions = new PersistenceOptions
         {
-            StoragePath = _testStoragePath,
+            StoragePath = this.testStoragePath,
             SnapshotInterval = TimeSpan.FromMinutes(10),
             SnapshotThreshold = 5
         };
-        _queueOptions = new QueueOptions
+        this.queueOptions = new QueueOptions
         {
             Capacity = 100,
             DefaultTimeout = TimeSpan.FromMinutes(5)
@@ -39,11 +45,11 @@ public class CrashRecoveryTests
     [TestCleanup]
     public void Cleanup()
     {
-        if (Directory.Exists(_testStoragePath))
+        if (Directory.Exists(this.testStoragePath))
         {
             try
             {
-                Directory.Delete(_testStoragePath, recursive: true);
+                Directory.Delete(this.testStoragePath, recursive: true);
             }
             catch
             {
@@ -56,10 +62,10 @@ public class CrashRecoveryTests
     public async Task Recovery_AfterSnapshot_RestoresAllMessages()
     {
         // Arrange - Create and persist queue state
-        var buffer1 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer1 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup1 = new DeduplicationIndex();
-        var persister1 = new FilePersister(_persistenceOptions);
-        var queueManager1 = new QueueManager(buffer1, dedup1, _queueOptions, persister1);
+        var persister1 = new FilePersister(this.persistenceOptions);
+        var queueManager1 = new QueueManager(buffer1, dedup1, this.queueOptions, persister1);
 
         // Enqueue messages
         await queueManager1.EnqueueAsync("Message 1");
@@ -73,9 +79,9 @@ public class CrashRecoveryTests
         persister1.Dispose();
 
         // Act - Recover from snapshot
-        var buffer2 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer2 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup2 = new DeduplicationIndex();
-        var persister2 = new FilePersister(_persistenceOptions);
+        var persister2 = new FilePersister(this.persistenceOptions);
         var recovery = new RecoveryService(persister2, buffer2, dedup2);
 
         var result = await recovery.RecoverAsync();
@@ -96,10 +102,10 @@ public class CrashRecoveryTests
     public async Task Recovery_WithJournalReplay_RestoresCorrectState()
     {
         // Arrange - Create queue and write operations
-        var buffer1 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer1 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup1 = new DeduplicationIndex();
-        var persister1 = new FilePersister(_persistenceOptions);
-        var queueManager1 = new QueueManager(buffer1, dedup1, _queueOptions, persister1);
+        var persister1 = new FilePersister(this.persistenceOptions);
+        var queueManager1 = new QueueManager(buffer1, dedup1, this.queueOptions, persister1);
 
         // Enqueue 5 messages
         var msgId1 = await queueManager1.EnqueueAsync("Message 1");
@@ -122,9 +128,9 @@ public class CrashRecoveryTests
         persister1.Dispose();
 
         // Act - Recover
-        var buffer2 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer2 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup2 = new DeduplicationIndex();
-        var persister2 = new FilePersister(_persistenceOptions);
+        var persister2 = new FilePersister(this.persistenceOptions);
         var recovery = new RecoveryService(persister2, buffer2, dedup2);
 
         var result = await recovery.RecoverAsync();
@@ -148,10 +154,10 @@ public class CrashRecoveryTests
     public async Task Recovery_WithExpiredLeases_RequeulesMessages()
     {
         // Arrange - Create queue with checked-out message
-        var buffer1 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer1 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup1 = new DeduplicationIndex();
-        var persister1 = new FilePersister(_persistenceOptions);
-        var queueManager1 = new QueueManager(buffer1, dedup1, _queueOptions, persister1);
+        var persister1 = new FilePersister(this.persistenceOptions);
+        var queueManager1 = new QueueManager(buffer1, dedup1, this.queueOptions, persister1);
 
         // Enqueue and checkout message
         await queueManager1.EnqueueAsync("Message 1");
@@ -168,9 +174,9 @@ public class CrashRecoveryTests
         persister1.Dispose();
 
         // Act - Recover
-        var buffer2 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer2 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup2 = new DeduplicationIndex();
-        var persister2 = new FilePersister(_persistenceOptions);
+        var persister2 = new FilePersister(this.persistenceOptions);
         var recovery = new RecoveryService(persister2, buffer2, dedup2);
 
         await recovery.RecoverAsync();
@@ -190,10 +196,10 @@ public class CrashRecoveryTests
     public async Task Recovery_WithDeduplication_RestoresIndex()
     {
         // Arrange - Create queue with deduplicated messages
-        var buffer1 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer1 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup1 = new DeduplicationIndex();
-        var persister1 = new FilePersister(_persistenceOptions);
-        var queueManager1 = new QueueManager(buffer1, dedup1, _queueOptions, persister1);
+        var persister1 = new FilePersister(this.persistenceOptions);
+        var queueManager1 = new QueueManager(buffer1, dedup1, this.queueOptions, persister1);
 
         // Enqueue messages with dedup keys
         await queueManager1.EnqueueAsync("Message 1", "key-1");
@@ -207,9 +213,9 @@ public class CrashRecoveryTests
         persister1.Dispose();
 
         // Act - Recover
-        var buffer2 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer2 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup2 = new DeduplicationIndex();
-        var persister2 = new FilePersister(_persistenceOptions);
+        var persister2 = new FilePersister(this.persistenceOptions);
         var recovery = new RecoveryService(persister2, buffer2, dedup2);
 
         var result = await recovery.RecoverAsync();
@@ -220,7 +226,7 @@ public class CrashRecoveryTests
         result.DeduplicationEntriesRestored.Should().Be(3);
 
         // Verify dedup index works - duplicate should supersede existing Ready message
-        var queueManager2 = new QueueManager(buffer2, dedup2, _queueOptions, persister2);
+        var queueManager2 = new QueueManager(buffer2, dedup2, this.queueOptions, persister2);
         var dupMsgId = await queueManager2.EnqueueAsync("Duplicate", "key-1");
 
         // Should supersede existing message - verify new message is present and old is superseded
@@ -237,9 +243,9 @@ public class CrashRecoveryTests
     public async Task Recovery_WithNoPersistedData_StartsClean()
     {
         // Arrange
-        var buffer = new CircularBuffer(_queueOptions.Capacity);
+        var buffer = new CircularBuffer(this.queueOptions.Capacity);
         var dedup = new DeduplicationIndex();
-        var persister = new FilePersister(_persistenceOptions);
+        var persister = new FilePersister(this.persistenceOptions);
         var recovery = new RecoveryService(persister, buffer, dedup);
 
         // Act
@@ -262,10 +268,10 @@ public class CrashRecoveryTests
     public async Task FullScenario_EnqueueSnapshotCrashRecover_WorksEndToEnd()
     {
         // Arrange - Phase 1: Normal operation
-        var buffer1 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer1 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup1 = new DeduplicationIndex();
-        var persister1 = new FilePersister(_persistenceOptions);
-        var queueManager1 = new QueueManager(buffer1, dedup1, _queueOptions, persister1);
+        var persister1 = new FilePersister(this.persistenceOptions);
+        var queueManager1 = new QueueManager(buffer1, dedup1, this.queueOptions, persister1);
 
         // Enqueue 10 messages
         for (int i = 1; i <= 10; i++)
@@ -290,9 +296,9 @@ public class CrashRecoveryTests
         persister1.Dispose();
 
         // Act - Phase 2: Simulated crash and recovery
-        var buffer2 = new CircularBuffer(_queueOptions.Capacity);
+        var buffer2 = new CircularBuffer(this.queueOptions.Capacity);
         var dedup2 = new DeduplicationIndex();
-        var persister2 = new FilePersister(_persistenceOptions);
+        var persister2 = new FilePersister(this.persistenceOptions);
         var recovery = new RecoveryService(persister2, buffer2, dedup2);
 
         var result = await recovery.RecoverAsync();
@@ -306,7 +312,7 @@ public class CrashRecoveryTests
         count.Should().BeGreaterOrEqualTo(8); // 10 - 2 acknowledged = 8, plus any journal replays
 
         // Create new queue manager and verify operations work
-        var queueManager2 = new QueueManager(buffer2, dedup2, _queueOptions, persister2);
+        var queueManager2 = new QueueManager(buffer2, dedup2, this.queueOptions, persister2);
 
         // Should be able to enqueue new message
         var newMsgId = await queueManager2.EnqueueAsync("New Message", "key-new");

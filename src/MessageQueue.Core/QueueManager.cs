@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="QueueManager.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core;
 
 using System;
@@ -16,13 +22,13 @@ using MessageQueue.Core.Options;
 /// </summary>
 public class QueueManager : IQueueManager
 {
-    private readonly ICircularBuffer _buffer;
-    private readonly DeduplicationIndex _deduplicationIndex;
-    private readonly IPersister? _persister;
-    private readonly IDeadLetterQueue? _deadLetterQueue;
-    private readonly QueueOptions _options;
-    private long _sequenceNumber;
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, string> _messageIdToDeduplicationKey;
+    private readonly ICircularBuffer buffer;
+    private readonly DeduplicationIndex deduplicationIndex;
+    private readonly IPersister? persister;
+    private readonly IDeadLetterQueue? deadLetterQueue;
+    private readonly QueueOptions options;
+    private long sequenceNumber;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, string> messageIdToDeduplicationKey;
 
     /// <summary>
     /// Initializes a new instance of the QueueManager.
@@ -39,13 +45,13 @@ public class QueueManager : IQueueManager
         IPersister persister = null,
         IDeadLetterQueue deadLetterQueue = null)
     {
-        _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
-        _deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _persister = persister;
-        _deadLetterQueue = deadLetterQueue;
-        _sequenceNumber = 0;
-        _messageIdToDeduplicationKey = new System.Collections.Concurrent.ConcurrentDictionary<Guid, string>();
+        this.buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+        this.deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
+        this.options = options ?? throw new ArgumentNullException(nameof(options));
+        this.persister = persister;
+        this.deadLetterQueue = deadLetterQueue;
+        this.sequenceNumber = 0;
+        this.messageIdToDeduplicationKey = new System.Collections.Concurrent.ConcurrentDictionary<Guid, string>();
     }
 
     /// <inheritdoc/>
@@ -61,24 +67,24 @@ public class QueueManager : IQueueManager
         // Check for deduplication
         if (!string.IsNullOrWhiteSpace(deduplicationKey))
         {
-            var existingMessageId = await _deduplicationIndex.TryGetAsync(deduplicationKey, cancellationToken);
+            var existingMessageId = await this.deduplicationIndex.TryGetAsync(deduplicationKey, cancellationToken);
             if (existingMessageId.HasValue)
             {
                 // Supersede existing in-flight message
-                var envelope = CreateEnvelope(message, deduplicationKey, correlationId);
-                bool replaced = await _buffer.ReplaceAsync(envelope, deduplicationKey, cancellationToken);
+                var envelope = this.CreateEnvelope(message, deduplicationKey, correlationId);
+                bool replaced = await this.buffer.ReplaceAsync(envelope, deduplicationKey, cancellationToken);
 
                 if (replaced)
                 {
                     // Update deduplication index and reverse mapping
-                    await _deduplicationIndex.UpdateAsync(deduplicationKey, envelope.MessageId, cancellationToken);
-                    _messageIdToDeduplicationKey.TryRemove(existingMessageId.Value, out _);
-                    _messageIdToDeduplicationKey.TryAdd(envelope.MessageId, deduplicationKey);
+                    await this.deduplicationIndex.UpdateAsync(deduplicationKey, envelope.MessageId, cancellationToken);
+                    this.messageIdToDeduplicationKey.TryRemove(existingMessageId.Value, out _);
+                    this.messageIdToDeduplicationKey.TryAdd(envelope.MessageId, deduplicationKey);
 
                     // Persist replace operation
-                    if (_persister != null)
+                    if (this.persister != null)
                     {
-                        await PersistOperationAsync(OperationCode.Replace, envelope, cancellationToken);
+                        await this.PersistOperationAsync(OperationCode.Replace, envelope, cancellationToken);
                     }
 
                     return envelope.MessageId;
@@ -92,20 +98,20 @@ public class QueueManager : IQueueManager
         }
 
         // No deduplication or new message
-        var newEnvelope = CreateEnvelope(message, deduplicationKey, correlationId);
-        await _buffer.EnqueueAsync(newEnvelope, cancellationToken);
+        var newEnvelope = this.CreateEnvelope(message, deduplicationKey, correlationId);
+        await this.buffer.EnqueueAsync(newEnvelope, cancellationToken);
 
         // Add to deduplication index and track reverse mapping
         if (!string.IsNullOrWhiteSpace(deduplicationKey))
         {
-            await _deduplicationIndex.TryAddAsync(deduplicationKey, newEnvelope.MessageId, cancellationToken);
-            _messageIdToDeduplicationKey.TryAdd(newEnvelope.MessageId, deduplicationKey);
+            await this.deduplicationIndex.TryAddAsync(deduplicationKey, newEnvelope.MessageId, cancellationToken);
+            this.messageIdToDeduplicationKey.TryAdd(newEnvelope.MessageId, deduplicationKey);
         }
 
         // Persist enqueue operation
-        if (_persister != null)
+        if (this.persister != null)
         {
-            await PersistOperationAsync(OperationCode.Enqueue, newEnvelope, cancellationToken);
+            await this.PersistOperationAsync(OperationCode.Enqueue, newEnvelope, cancellationToken);
         }
 
         return newEnvelope.MessageId;
@@ -120,18 +126,18 @@ public class QueueManager : IQueueManager
         if (string.IsNullOrWhiteSpace(handlerId))
             throw new ArgumentException("Handler ID cannot be null or whitespace.", nameof(handlerId));
 
-        var lease = leaseDuration == default(TimeSpan) ? _options.DefaultTimeout : leaseDuration;
+        var lease = leaseDuration == default(TimeSpan) ? this.options.DefaultTimeout : leaseDuration;
         var messageType = typeof(T);
 
-        var envelope = await _buffer.CheckoutAsync(messageType, handlerId, lease, cancellationToken);
+        var envelope = await this.buffer.CheckoutAsync(messageType, handlerId, lease, cancellationToken);
 
         if (envelope == null)
             return null;
 
         // Persist checkout operation
-        if (_persister != null)
+        if (this.persister != null)
         {
-            await PersistOperationAsync(OperationCode.Checkout, envelope, cancellationToken);
+            await this.PersistOperationAsync(OperationCode.Checkout, envelope, cancellationToken);
         }
 
         // Deserialize payload
@@ -155,17 +161,17 @@ public class QueueManager : IQueueManager
     /// <inheritdoc/>
     public async Task AcknowledgeAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
-        bool acknowledged = await _buffer.AcknowledgeAsync(messageId, cancellationToken);
+        bool acknowledged = await this.buffer.AcknowledgeAsync(messageId, cancellationToken);
 
         if (!acknowledged)
             throw new InvalidOperationException($"Message {messageId} not found or already completed.");
 
         // Persist acknowledge operation
-        if (_persister != null)
+        if (this.persister != null)
         {
             var record = new OperationRecord
             {
-                SequenceNumber = Interlocked.Increment(ref _sequenceNumber),
+                SequenceNumber = Interlocked.Increment(ref this.sequenceNumber),
                 OperationCode = OperationCode.Acknowledge,
                 MessageId = messageId,
                 Payload = "{}",
@@ -173,13 +179,13 @@ public class QueueManager : IQueueManager
                 Checksum = 0
             };
 
-            await _persister.WriteOperationAsync(record, cancellationToken);
+            await this.persister.WriteOperationAsync(record, cancellationToken);
         }
 
         // Remove from deduplication index if it has a dedup key
-        if (_messageIdToDeduplicationKey.TryRemove(messageId, out string? dedupKey))
+        if (this.messageIdToDeduplicationKey.TryRemove(messageId, out string? dedupKey))
         {
-            await _deduplicationIndex.RemoveAsync(dedupKey, cancellationToken);
+            await this.deduplicationIndex.RemoveAsync(dedupKey, cancellationToken);
         }
     }
 
@@ -187,7 +193,7 @@ public class QueueManager : IQueueManager
     public async Task RequeueAsync(Guid messageId, Exception exception = null, CancellationToken cancellationToken = default)
     {
         // Get all messages to find the one to requeue
-        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var allMessages = await this.buffer.GetAllMessagesAsync(cancellationToken);
         MessageEnvelope target = null;
 
         foreach (var msg in allMessages)
@@ -206,21 +212,21 @@ public class QueueManager : IQueueManager
         if (target.RetryCount >= target.MaxRetries)
         {
             // Move to dead letter queue
-            if (_deadLetterQueue != null)
+            if (this.deadLetterQueue != null)
             {
                 var failureReason = exception != null
                     ? $"Max retries exceeded: {exception.Message}"
                     : "Max retries exceeded";
 
-                await _deadLetterQueue.AddAsync(target, failureReason, exception, cancellationToken);
+                await this.deadLetterQueue.AddAsync(target, failureReason, exception, cancellationToken);
 
                 // Remove from main queue by acknowledging
-                await _buffer.AcknowledgeAsync(messageId, cancellationToken);
+                await this.buffer.AcknowledgeAsync(messageId, cancellationToken);
 
                 // Remove from deduplication index
-                if (_messageIdToDeduplicationKey.TryRemove(messageId, out string? dedupKey))
+                if (this.messageIdToDeduplicationKey.TryRemove(messageId, out string? dedupKey))
                 {
-                    await _deduplicationIndex.RemoveAsync(dedupKey, cancellationToken);
+                    await this.deduplicationIndex.RemoveAsync(dedupKey, cancellationToken);
                 }
 
                 return;
@@ -233,10 +239,10 @@ public class QueueManager : IQueueManager
 
         // Calculate backoff delay
         var newRetryCount = target.RetryCount + 1;
-        var notBefore = CalculateBackoffTime(newRetryCount);
+        var notBefore = this.CalculateBackoffTime(newRetryCount);
 
         // Remove and update the message with backoff
-        await _buffer.RemoveAsync(messageId, cancellationToken);
+        await this.buffer.RemoveAsync(messageId, cancellationToken);
 
         // Create updated envelope with incremented retry count and backoff
         var requeuedEnvelope = new MessageEnvelope
@@ -256,19 +262,19 @@ public class QueueManager : IQueueManager
             NotBefore = notBefore
         };
 
-        await _buffer.EnqueueAsync(requeuedEnvelope, cancellationToken);
+        await this.buffer.EnqueueAsync(requeuedEnvelope, cancellationToken);
 
         // Persist requeue operation
-        if (_persister != null)
+        if (this.persister != null)
         {
-            await PersistOperationAsync(OperationCode.Requeue, requeuedEnvelope, cancellationToken);
+            await this.PersistOperationAsync(OperationCode.Requeue, requeuedEnvelope, cancellationToken);
         }
     }
 
     /// <inheritdoc/>
     public async Task ExtendLeaseAsync(Guid messageId, TimeSpan extensionDuration, CancellationToken cancellationToken = default)
     {
-        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var allMessages = await this.buffer.GetAllMessagesAsync(cancellationToken);
 
         foreach (var msg in allMessages)
         {
@@ -278,9 +284,9 @@ public class QueueManager : IQueueManager
                 msg.Lease.ExtensionCount++;
 
                 // Persist lease extension
-                if (_persister != null)
+                if (this.persister != null)
                 {
-                    await PersistOperationAsync(OperationCode.LeaseRenew, msg, cancellationToken);
+                    await this.PersistOperationAsync(OperationCode.LeaseRenew, msg, cancellationToken);
                 }
 
                 return;
@@ -293,11 +299,11 @@ public class QueueManager : IQueueManager
     /// <inheritdoc/>
     public async Task<QueueMetrics> GetMetricsAsync(CancellationToken cancellationToken = default)
     {
-        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var allMessages = await this.buffer.GetAllMessagesAsync(cancellationToken);
 
         var metrics = new QueueMetrics
         {
-            TotalCapacity = _buffer.Capacity,
+            TotalCapacity = this.buffer.Capacity,
             ReadyCount = allMessages.Count(m => m.Status == MessageStatus.Ready),
             InFlightCount = allMessages.Count(m => m.Status == MessageStatus.InFlight),
             CompletedCount = 0, // Completed messages are removed from buffer
@@ -310,13 +316,13 @@ public class QueueManager : IQueueManager
     /// <inheritdoc/>
     public Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
-        return _buffer.GetCountAsync(cancellationToken);
+        return this.buffer.GetCountAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<IEnumerable<MessageEnvelope>> GetPendingMessagesAsync(CancellationToken cancellationToken = default)
     {
-        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var allMessages = await this.buffer.GetAllMessagesAsync(cancellationToken);
         var pending = new List<MessageEnvelope>();
 
         foreach (var msg in allMessages)
@@ -333,7 +339,7 @@ public class QueueManager : IQueueManager
     /// <inheritdoc/>
     public async Task<MessageEnvelope?> GetMessageAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
-        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var allMessages = await this.buffer.GetAllMessagesAsync(cancellationToken);
 
         foreach (var msg in allMessages)
         {
@@ -353,14 +359,14 @@ public class QueueManager : IQueueManager
     /// <returns>Queue snapshot containing all state.</returns>
     public async Task<QueueSnapshot> CreateSnapshotAsync(CancellationToken cancellationToken = default)
     {
-        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
-        var deduplicationSnapshot = await _deduplicationIndex.GetSnapshotAsync(cancellationToken);
+        var allMessages = await this.buffer.GetAllMessagesAsync(cancellationToken);
+        var deduplicationSnapshot = await this.deduplicationIndex.GetSnapshotAsync(cancellationToken);
 
         var snapshot = new QueueSnapshot
         {
-            Version = Interlocked.Read(ref _sequenceNumber),
+            Version = Interlocked.Read(ref this.sequenceNumber),
             CreatedAt = DateTime.UtcNow,
-            Capacity = _buffer.Capacity,
+            Capacity = this.buffer.Capacity,
             MessageCount = allMessages.Length,
             Messages = allMessages.ToList(),
             DeduplicationIndex = deduplicationSnapshot,
@@ -376,20 +382,20 @@ public class QueueManager : IQueueManager
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task CheckAndCreateSnapshotAsync(CancellationToken cancellationToken = default)
     {
-        if (_persister != null && _persister.ShouldSnapshot())
+        if (this.persister != null && this.persister.ShouldSnapshot())
         {
-            var snapshot = await CreateSnapshotAsync(cancellationToken);
-            await _persister.CreateSnapshotAsync(snapshot, cancellationToken);
+            var snapshot = await this.CreateSnapshotAsync(cancellationToken);
+            await this.persister.CreateSnapshotAsync(snapshot, cancellationToken);
 
             // Truncate journal after successful snapshot
-            await _persister.TruncateJournalAsync(snapshot.Version, cancellationToken);
+            await this.persister.TruncateJournalAsync(snapshot.Version, cancellationToken);
         }
     }
 
     /// <inheritdoc/>
     public void SetSequenceNumber(long sequenceNumber)
     {
-        Interlocked.Exchange(ref _sequenceNumber, sequenceNumber);
+        Interlocked.Exchange(ref this.sequenceNumber, sequenceNumber);
     }
 
     /// <summary>
@@ -408,7 +414,7 @@ public class QueueManager : IQueueManager
             DeduplicationKey = deduplicationKey,
             Status = MessageStatus.Ready,
             RetryCount = 0,
-            MaxRetries = _options.DefaultMaxRetries,
+            MaxRetries = this.options.DefaultMaxRetries,
             Lease = null,
             LastPersistedVersion = 0,
             Metadata = new MessageMetadata
@@ -430,38 +436,38 @@ public class QueueManager : IQueueManager
     /// <returns>The timestamp when the message should be available for retry.</returns>
     private DateTime? CalculateBackoffTime(int retryCount)
     {
-        if (_options.DefaultBackoffStrategy == Options.RetryBackoffStrategy.None)
+        if (this.options.DefaultBackoffStrategy == Options.RetryBackoffStrategy.None)
         {
             return null; // No backoff, immediately available
         }
 
         TimeSpan delay;
 
-        switch (_options.DefaultBackoffStrategy)
+        switch (this.options.DefaultBackoffStrategy)
         {
             case Options.RetryBackoffStrategy.Fixed:
-                delay = _options.DefaultInitialBackoff;
+                delay = this.options.DefaultInitialBackoff;
                 break;
 
             case Options.RetryBackoffStrategy.Linear:
-                delay = TimeSpan.FromMilliseconds(_options.DefaultInitialBackoff.TotalMilliseconds * retryCount);
+                delay = TimeSpan.FromMilliseconds(this.options.DefaultInitialBackoff.TotalMilliseconds * retryCount);
                 break;
 
             case Options.RetryBackoffStrategy.Exponential:
                 // Exponential: initialDelay * 2^(retryCount - 1)
-                var exponentialMs = _options.DefaultInitialBackoff.TotalMilliseconds * Math.Pow(2, retryCount - 1);
+                var exponentialMs = this.options.DefaultInitialBackoff.TotalMilliseconds * Math.Pow(2, retryCount - 1);
                 delay = TimeSpan.FromMilliseconds(exponentialMs);
                 break;
 
             default:
-                delay = _options.DefaultInitialBackoff;
+                delay = this.options.DefaultInitialBackoff;
                 break;
         }
 
         // Cap at max backoff
-        if (delay > _options.DefaultMaxBackoff)
+        if (delay > this.options.DefaultMaxBackoff)
         {
-            delay = _options.DefaultMaxBackoff;
+            delay = this.options.DefaultMaxBackoff;
         }
 
         return DateTime.UtcNow.Add(delay);
@@ -486,7 +492,7 @@ public class QueueManager : IQueueManager
 
         var record = new OperationRecord
         {
-            SequenceNumber = Interlocked.Increment(ref _sequenceNumber),
+            SequenceNumber = Interlocked.Increment(ref this.sequenceNumber),
             OperationCode = opCode,
             MessageId = envelope.MessageId,
             Payload = payload,
@@ -494,6 +500,6 @@ public class QueueManager : IQueueManager
             Checksum = 0 // Will be calculated by persister
         };
 
-        await _persister!.WriteOperationAsync(record, cancellationToken);
+        await this.persister!.WriteOperationAsync(record, cancellationToken);
     }
 }

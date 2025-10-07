@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="Program.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using MessageQueue.Core;
 using MessageQueue.Core.Interfaces;
 using MessageQueue.Core.Options;
@@ -13,10 +19,10 @@ namespace MessageQueue.SoakTests;
 /// </summary>
 public class Program
 {
-    private static long _totalEnqueued = 0;
-    private static long _totalProcessed = 0;
-    private static long _totalFailed = 0;
-    private static readonly object _statsLock = new object();
+    private static long TotalEnqueued = 0;
+    private static long TotalProcessed = 0;
+    private static long TotalFailed = 0;
+    private static readonly object StatsLock = new object();
 
     public static async Task Main(string[] args)
     {
@@ -143,12 +149,12 @@ public class Program
 
         // Final stats
         Log.Information("=== Final Statistics ===");
-        Log.Information("Total Enqueued: {TotalEnqueued}", _totalEnqueued);
-        Log.Information("Total Processed: {TotalProcessed}", _totalProcessed);
-        Log.Information("Total Failed: {TotalFailed}", _totalFailed);
-        Log.Information("Success Rate: {SuccessRate:P2}", (double)_totalProcessed / _totalEnqueued);
+        Log.Information("Total Enqueued: {TotalEnqueued}", TotalEnqueued);
+        Log.Information("Total Processed: {TotalProcessed}", TotalProcessed);
+        Log.Information("Total Failed: {TotalFailed}", TotalFailed);
+        Log.Information("Success Rate: {SuccessRate:P2}", (double)TotalProcessed / TotalEnqueued);
         Log.Information("Duration: {Duration}", stopwatch.Elapsed);
-        Log.Information("Throughput: {Throughput:F2} msg/sec", _totalProcessed / stopwatch.Elapsed.TotalSeconds);
+        Log.Information("Throughput: {Throughput:F2} msg/sec", TotalProcessed / stopwatch.Elapsed.TotalSeconds);
 
         // Cleanup
         serviceProvider.Dispose();
@@ -178,7 +184,7 @@ public class Program
                 await queueManager.EnqueueAsync(message);
                 dispatcher.SignalMessageReady(typeof(WorkMessage));
 
-                Interlocked.Increment(ref _totalEnqueued);
+                Interlocked.Increment(ref TotalEnqueued);
 
                 // Throttle production rate
                 await Task.Delay(random.Next(50, 200), cancellationToken);
@@ -205,9 +211,9 @@ public class Program
             {
                 await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
 
-                var enqueued = Interlocked.Read(ref _totalEnqueued);
-                var processed = Interlocked.Read(ref _totalProcessed);
-                var failed = Interlocked.Read(ref _totalFailed);
+                var enqueued = Interlocked.Read(ref TotalEnqueued);
+                var processed = Interlocked.Read(ref TotalProcessed);
+                var failed = Interlocked.Read(ref TotalFailed);
 
                 Log.Information(
                     "[{Elapsed}] Stats: Enqueued={Enqueued}, Processed={Processed}, Failed={Failed}, Rate={Rate:F2} msg/s",
@@ -243,12 +249,12 @@ public class Program
             // Simulate work
             await Task.Delay(message.ProcessingTimeMs, cancellationToken);
 
-            Interlocked.Increment(ref _totalProcessed);
+            Interlocked.Increment(ref TotalProcessed);
 
             // Simulate occasional failures (5% failure rate)
             if (Random.Shared.Next(100) < 5)
             {
-                Interlocked.Increment(ref _totalFailed);
+                Interlocked.Increment(ref TotalFailed);
                 throw new Exception("Simulated handler failure");
             }
         }

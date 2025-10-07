@@ -332,7 +332,7 @@ namespace MessageQueue.Persistence
         public long LastVersion { get; set; }
 
         /// <summary>
-        /// Duration of recovery
+        /// this.Duration of recovery
         /// </summary>
         public TimeSpan Duration => this.EndTime - this.StartTime;
     }

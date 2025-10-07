@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="HandlerOptions.cs" company="Microsoft Corp.">
+//     Copyright (c) Microsoft Corp. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 namespace MessageQueue.Core.Options;
 
 using System.ComponentModel.DataAnnotations;
