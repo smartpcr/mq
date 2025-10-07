@@ -85,4 +85,13 @@ public interface ICircularBuffer
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if removed, false if not found</returns>
     Task<bool> RemoveAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Restores a message envelope to the buffer, preserving its exact state (including status and lease).
+    /// Used during recovery to restore snapshots without modifying message state.
+    /// </summary>
+    /// <param name="envelope">Message envelope to restore with its original state</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if restored successfully</returns>
+    Task<bool> RestoreAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default);
 }

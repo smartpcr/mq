@@ -50,7 +50,8 @@ namespace MessageQueue.Persistence
                 Directory.CreateDirectory(this.options.StoragePath);
             }
 
-            this.journalPath = Path.Combine(this.options.StoragePath, "journal.dat");
+            this.journalPath = Path.Combine(this.options.StoragePath, this.options.JournalFileName);
+            // For snapshots, use a fixed name for the active snapshot (pattern is for archived snapshots)
             this.snapshotPath = Path.Combine(this.options.StoragePath, "snapshot.dat");
 
             this.journalLock = new SemaphoreSlim(1, 1);
