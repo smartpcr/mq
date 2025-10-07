@@ -24,5 +24,22 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
+      - name: Detect test projects
+        id: detect-tests
+        shell: bash
+        run: |
+          if grep -rl "<IsTestProject>true" --include "*.csproj" . >/dev/null; then
+            echo "has-tests=true" >> "$GITHUB_OUTPUT"
+          elif grep -rl "<PackageReference Include=\"Microsoft.NET.Test.Sdk\"" --include "*.csproj" . >/dev/null; then
+            echo "has-tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Test
+        if: steps.detect-tests.outputs.has-tests == 'true'
         run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Skip tests (no test projects found)
+        if: steps.detect-tests.outputs.has-tests != 'true'
+        run: echo "No test projects found. Skipping tests."
