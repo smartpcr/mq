@@ -66,11 +66,19 @@ namespace MessageQueue.Core
 
             if (this.monitorTask != null)
             {
-                await this.monitorTask;
+                try
+                {
+                    await this.monitorTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Swallow cancellation exceptions triggered by StopAsync.
+                }
             }
 
             this.cancellationTokenSource?.Dispose();
             this.cancellationTokenSource = null;
+            this.monitorTask = null;
         }
 
         /// <inheritdoc/>
