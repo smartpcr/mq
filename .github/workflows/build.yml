@@ -12,8 +12,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         configuration: [Debug, Release]
+
+    env:
+      SOLUTION_FILE: MessageQueue.sln
+      NUGET_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -25,10 +30,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
 
       - name: Build
-        run: dotnet build --configuration ${{ matrix.configuration }} --no-restore
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ matrix.configuration }} --no-restore
 
       - name: Detect test projects
         id: detect-tests
@@ -44,7 +49,7 @@ jobs:
 
       - name: Test
         if: steps.detect-tests.outputs.has-tests == 'true'
-        run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal
+        run: dotnet test ${{ env.SOLUTION_FILE }} --configuration ${{ matrix.configuration }} --no-build --verbosity normal
 
       - name: Skip tests (no test projects found)
         if: steps.detect-tests.outputs.has-tests != 'true'
@@ -52,7 +57,16 @@ jobs:
 
       - name: Pack NuGet package
         if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
-        run: dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj --configuration Release --no-build --output ./packages -p:ContinuousIntegrationBuild=true
+        run: |
+          dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./packages \
+            -p:ContinuousIntegrationBuild=true
+
+      - name: List packages
+        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
+        run: find ./packages -maxdepth 1 -name '*.nupkg' -print
 
       - name: Upload NuGet artifact
         if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
@@ -62,7 +76,11 @@ jobs:
           path: packages/*.nupkg
 
       - name: Publish NuGet package
-        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest'
-        run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --skip-duplicate
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest' && github.event_name != 'pull_request' && env.NUGET_API_KEY != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for package in ./packages/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source "$NUGET_SOURCE" --skip-duplicate
+          done
