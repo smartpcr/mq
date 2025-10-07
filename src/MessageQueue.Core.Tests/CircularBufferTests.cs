@@ -212,7 +212,7 @@ public class CircularBufferTests
         count.Should().Be(50);
     }
 
-    private static MessageEnvelope CreateTestEnvelope(string? deduplicationKey = null)
+    private static MessageEnvelope CreateTestEnvelope(string deduplicationKey = null)
     {
         return new MessageEnvelope
         {

@@ -38,7 +38,7 @@ public class DeadLetterEnvelope : MessageEnvelope
     /// <summary>
     /// Creates a DeadLetterEnvelope from a MessageEnvelope
     /// </summary>
-    public static DeadLetterEnvelope FromMessageEnvelope(MessageEnvelope envelope, string failureReason, Exception? exception = null)
+    public static DeadLetterEnvelope FromMessageEnvelope(MessageEnvelope envelope, string failureReason, Exception exception = null)
     {
         return new DeadLetterEnvelope
         {

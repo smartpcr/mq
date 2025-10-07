@@ -15,5 +15,5 @@ public interface IQueuePublisher
     /// <param name="correlationId">Optional correlation ID (propagated from parent message)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Message ID</returns>
-    Task<Guid> EnqueueAsync<T>(T message, string? deduplicationKey = null, string? correlationId = null, CancellationToken cancellationToken = default);
+    Task<Guid> EnqueueAsync<T>(T message, string deduplicationKey = null, string correlationId = null, CancellationToken cancellationToken = default);
 }

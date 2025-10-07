@@ -54,6 +54,17 @@ public class PersistenceOptions
     /// Serialization format
     /// </summary>
     public SerializationFormat SerializationFormat { get; set; } = SerializationFormat.Json;
+
+    /// <summary>
+    /// Time interval between automatic snapshots
+    /// </summary>
+    public TimeSpan SnapshotInterval { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Number of operations before triggering automatic snapshot
+    /// </summary>
+    [Range(1, 1000000)]
+    public long SnapshotThreshold { get; set; } = 10000;
 }
 
 /// <summary>

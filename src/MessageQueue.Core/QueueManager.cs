@@ -34,7 +34,7 @@ public class QueueManager : IQueueManager
         ICircularBuffer buffer,
         DeduplicationIndex deduplicationIndex,
         QueueOptions options,
-        IPersister? persister = null)
+        IPersister persister = null)
     {
         _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         _deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
@@ -47,8 +47,8 @@ public class QueueManager : IQueueManager
     /// <inheritdoc/>
     public async Task<Guid> EnqueueAsync<T>(
         T message,
-        string? deduplicationKey = null,
-        string? correlationId = null,
+        string deduplicationKey = null,
+        string correlationId = null,
         CancellationToken cancellationToken = default)
     {
         if (message == null)
@@ -108,9 +108,9 @@ public class QueueManager : IQueueManager
     }
 
     /// <inheritdoc/>
-    public async Task<MessageEnvelope<T>?> CheckoutAsync<T>(
+    public async Task<MessageEnvelope<T>> CheckoutAsync<T>(
         string handlerId,
-        TimeSpan? leaseDuration = null,
+        TimeSpan leaseDuration = default(TimeSpan),
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(handlerId))
@@ -180,11 +180,11 @@ public class QueueManager : IQueueManager
     }
 
     /// <inheritdoc/>
-    public async Task RequeueAsync(Guid messageId, Exception? exception = null, CancellationToken cancellationToken = default)
+    public async Task RequeueAsync(Guid messageId, Exception exception = null, CancellationToken cancellationToken = default)
     {
         // Get all messages to find the one to requeue
         var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
-        MessageEnvelope? target = null;
+        MessageEnvelope target = null;
 
         foreach (var msg in allMessages)
         {
@@ -300,9 +300,49 @@ public class QueueManager : IQueueManager
     }
 
     /// <summary>
+    /// Creates a snapshot of the current queue state for persistence.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Queue snapshot containing all state.</returns>
+    public async Task<QueueSnapshot> CreateSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var deduplicationSnapshot = await _deduplicationIndex.GetSnapshotAsync(cancellationToken);
+
+        var snapshot = new QueueSnapshot
+        {
+            Version = Interlocked.Read(ref _sequenceNumber),
+            CreatedAt = DateTime.UtcNow,
+            Capacity = _buffer.Capacity,
+            MessageCount = allMessages.Length,
+            Messages = allMessages.ToList(),
+            DeduplicationIndex = deduplicationSnapshot,
+            DeadLetterMessages = new List<DeadLetterEnvelope>() // Phase 5
+        };
+
+        return snapshot;
+    }
+
+    /// <summary>
+    /// Triggers a snapshot if persistence conditions are met.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task CheckAndCreateSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        if (_persister != null && _persister.ShouldSnapshot())
+        {
+            var snapshot = await CreateSnapshotAsync(cancellationToken);
+            await _persister.CreateSnapshotAsync(snapshot, cancellationToken);
+
+            // Truncate journal after successful snapshot
+            await _persister.TruncateJournalAsync(snapshot.Version, cancellationToken);
+        }
+    }
+
+    /// <summary>
     /// Creates a message envelope from a message object.
     /// </summary>
-    private MessageEnvelope CreateEnvelope<T>(T message, string? deduplicationKey, string? correlationId)
+    private MessageEnvelope CreateEnvelope<T>(T message, string deduplicationKey, string correlationId)
     {
         var payload = JsonSerializer.Serialize(message);
         var messageType = typeof(T).FullName ?? typeof(T).Name;

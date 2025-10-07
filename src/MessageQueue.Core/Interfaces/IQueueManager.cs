@@ -19,7 +19,7 @@ public interface IQueueManager
     /// <param name="correlationId">Optional correlation ID for message tracing</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Message ID</returns>
-    Task<Guid> EnqueueAsync<T>(T message, string? deduplicationKey = null, string? correlationId = null, CancellationToken cancellationToken = default);
+    Task<Guid> EnqueueAsync<T>(T message, string deduplicationKey = null, string correlationId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks out the next ready message of the specified type.
@@ -30,7 +30,7 @@ public interface IQueueManager
     /// <param name="leaseDuration">Lease duration (defaults to handler-specific timeout)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Message envelope or null if no messages available</returns>
-    Task<MessageEnvelope<T>?> CheckoutAsync<T>(string handlerId, TimeSpan? leaseDuration = null, CancellationToken cancellationToken = default);
+    Task<MessageEnvelope<T>> CheckoutAsync<T>(string handlerId, TimeSpan leaseDuration = default(TimeSpan), CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Acknowledges successful message processing.
@@ -47,7 +47,7 @@ public interface IQueueManager
     /// <param name="messageId">Message ID to requeue</param>
     /// <param name="exception">Exception that caused the failure</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task RequeueAsync(Guid messageId, Exception? exception = null, CancellationToken cancellationToken = default);
+    Task RequeueAsync(Guid messageId, Exception exception = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Extends the lease for a message being processed.

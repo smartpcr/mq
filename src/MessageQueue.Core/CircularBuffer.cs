@@ -247,7 +247,7 @@ public class CircularBuffer : ICircularBuffer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        MessageEnvelope? envelope = null;
+        MessageEnvelope envelope = null;
 
         // Find the message
         for (int i = 0; i < _capacity; i++)
