@@ -158,6 +158,43 @@ namespace MessageQueue.Core
             });
         }
 
+        /// <inheritdoc/>
+        public Task<Dictionary<string, HandlerMetricsSnapshot>> GetMetricsAsync(CancellationToken cancellationToken = default)
+        {
+            var metricsDict = new Dictionary<string, HandlerMetricsSnapshot>();
+
+            foreach (var kvp in this.metrics)
+            {
+                var messageType = kvp.Key;
+                var handlerMetrics = kvp.Value;
+                var activeWorkers = this.workerPools.TryGetValue(messageType, out var pool) ? pool.Workers.Count : 0;
+                var avgTime = handlerMetrics.GetAverageExecutionTime();
+
+                metricsDict[messageType.FullName ?? messageType.Name] = new HandlerMetricsSnapshot
+                {
+                    MessageType = messageType.FullName ?? messageType.Name,
+                    ActiveWorkers = activeWorkers,
+                    TotalProcessed = handlerMetrics.TotalProcessed,
+                    TotalFailed = handlerMetrics.TotalFailed,
+                    AverageProcessingTimeMs = avgTime.TotalMilliseconds,
+                    MessagesPerSecond = this.CalculateThroughput(handlerMetrics)
+                };
+            }
+
+            return Task.FromResult(metricsDict);
+        }
+
+        private double CalculateThroughput(HandlerMetrics metrics)
+        {
+            // Simple throughput calculation: total processed / average time
+            // For more accurate throughput, we'd need time-windowed sampling
+            var avgTime = metrics.GetAverageExecutionTime();
+            if (avgTime.TotalSeconds == 0)
+                return 0;
+
+            return 1.0 / avgTime.TotalSeconds;
+        }
+
         private void StartWorkerPool(Type messageType, HandlerRegistration registration)
         {
             var minParallelism = this.GetMinParallelism(registration);

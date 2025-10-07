@@ -283,19 +283,46 @@ services.AddScoped<IMessageHandler<TMessage>, ConcreteHandler>();
 
 **Tests**: 30/30 passing (100%)
 
+#### Phase 6: Handler Chaining, Long-Running Support & Admin APIs ✅
+**Implementation Details**:
+- **QueuePublisher.cs** (src/MessageQueue.Core/QueuePublisher.cs:1)
+  - Simple wrapper around IQueueManager for handler-initiated enqueue
+  - Enables message chaining and workflow orchestration
+  - Correlation ID propagation for distributed tracing
+
+- **HeartbeatService.cs** (src/MessageQueue.Core/HeartbeatService.cs:1)
+  - Progress tracking with percentage (0-100) and status messages
+  - Automatic lease extension on heartbeat to prevent timeout
+  - ConcurrentDictionary for thread-safe heartbeat tracking
+  - Heartbeat count and last heartbeat timestamp
+
+- **QueueAdminApi.cs** (src/MessageQueue.Core/QueueAdminApi.cs:1)
+  - Handler scaling via HandlerDispatcher.ScaleHandlerAsync
+  - Queue metrics (ready, in-flight, capacity)
+  - Handler metrics (throughput, latency, active workers, failures)
+  - Manual snapshot triggering via QueueManager.CheckAndCreateSnapshotAsync
+  - DLQ replay and purge operations
+
+**Key Design Decisions**:
+- QueuePublisher is a thin wrapper to maintain clean separation of concerns
+- Heartbeat automatically extends lease using default timeout from options
+- HeartbeatProgress is immutable to prevent external modification
+- Admin API validates dependencies (persister, DLQ) before operations
+- Handler metrics include throughput calculation (1/avg processing time)
+
+**Tests**: 21/21 passing (100%)
+- Handler chaining: 5 tests (correlation tracking, multi-step workflows)
+- Long-running handlers: 8 tests (heartbeat, progress, lease extension)
+- Admin operations: 8 tests (scaling, metrics, DLQ management)
+
 ### Remaining Phases
 
-#### Phase 6: Advanced Features (In Progress)
-- [ ] Handler chaining with IQueuePublisher
-- [ ] Correlation ID propagation
-- [ ] Admin API for runtime scaling
-- [ ] OpenTelemetry integration
-
-#### Phase 7: Hardening & Release
+#### Phase 7: Hardening & Release (Pending)
 - [ ] Soak testing (24-hour runs)
 - [ ] Chaos testing
 - [ ] Performance benchmarking
 - [ ] Security review
+- [ ] OpenTelemetry integration
 - [ ] Documentation and runbooks
 
 ### Next Steps
