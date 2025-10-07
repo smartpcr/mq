@@ -43,7 +43,8 @@
       "Bash(git fsck:*)",
       "Bash(git cat-file:*)",
       "Bash(git gc:*)",
-      "Bash(dotnet build-server:*)"
+      "Bash(dotnet build-server:*)",
+      "Bash(do echo \"Testing: $test\")"
     ],
     "deny": [],
     "ask": []

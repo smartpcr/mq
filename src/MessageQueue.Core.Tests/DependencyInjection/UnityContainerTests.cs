@@ -228,7 +228,7 @@ namespace MessageQueue.Core.Tests.DependencyInjection
             var message = new TestMessage { Content = "Hello Unity" };
             await publisher.EnqueueAsync(message);
 
-            await Task.Delay(500); // Give time for processing
+            await Task.Delay(1000); // Give time for processing
 
             await dispatcher.StopAsync();
 

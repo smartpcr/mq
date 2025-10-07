@@ -330,6 +330,36 @@ using (var scope = scopeFactory.CreateScope())
 }
 ```
 
+## Circular Dependency Resolution
+
+The message queue has a circular dependency between `QueueManager`, `DeadLetterQueue`, and `HandlerDispatcher`:
+
+- `DeadLetterQueue` depends on `IQueueManager` (to replay messages)
+- `HandlerDispatcher` depends on `IQueueManager` (to acknowledge/requeue messages)
+- `QueueManager` optionally depends on `IDeadLetterQueue` and `IHandlerDispatcher`
+
+### How It's Solved
+
+The Unity integration uses **setter injection** to break the circular dependency:
+
+1. `QueueManager` is registered with `null` for `deadLetterQueue` and `dispatcher` parameters
+2. `DeadLetterQueue` and `HandlerDispatcher` are registered normally
+3. `AddMessageQueue()` automatically calls `WireUpMessageQueueDependencies()` which:
+   - Resolves all three services (triggers singleton creation)
+   - Calls `SetDeadLetterQueue()` and `SetDispatcher()` on the `QueueManager` instance
+
+This happens automatically when you call `AddMessageQueue()` - no additional setup required.
+
+```csharp
+// This automatically wires up circular dependencies
+container.AddMessageQueue(options => { /* ... */ });
+
+// All services are ready to use
+var queueManager = container.Resolve<IQueueManager>(); // Fully wired
+var publisher = container.Resolve<IQueuePublisher>(); // Ready to use
+var dispatcher = container.Resolve<IHandlerDispatcher>(); // Ready to use
+```
+
 ## Differences from IServiceCollection
 
 ### Registration Syntax

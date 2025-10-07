@@ -54,7 +54,20 @@ namespace MessageQueue.Core.DependencyInjection
                 c => new CircularBuffer(c.Resolve<QueueOptions>().Capacity),
                 new ContainerControlledLifetimeManager());
 
-            container.RegisterSingleton<IQueueManager, QueueManager>();
+            container.RegisterSingleton<DeduplicationIndex>();
+
+            // Register QueueManager with null dependencies to break circular dependency
+            // Dependencies will be set via setters after registration
+            container.RegisterFactory<IQueueManager>(
+                c => new QueueManager(
+                    c.Resolve<ICircularBuffer>(),
+                    c.Resolve<DeduplicationIndex>(),
+                    c.Resolve<QueueOptions>(),
+                    options.EnablePersistence ? c.Resolve<IPersister>() : null,
+                    null, // deadLetterQueue - set via BuildServiceProvider
+                    null), // dispatcher - set via BuildServiceProvider
+                new ContainerControlledLifetimeManager());
+
             container.RegisterSingleton<IQueuePublisher, QueuePublisher>();
             container.RegisterSingleton<IDeadLetterQueue, DeadLetterQueue>();
             container.RegisterSingleton<HandlerRegistry>();
@@ -78,6 +91,31 @@ namespace MessageQueue.Core.DependencyInjection
                     options.EnableOtlpExport,
                     options.OtlpEndpoint),
                 new ContainerControlledLifetimeManager());
+
+            // Wire up circular dependencies after all services are registered
+            // This resolves the services and sets up the bidirectional references
+            container.WireUpMessageQueueDependencies();
+
+            return container;
+        }
+
+        /// <summary>
+        /// Wires up circular dependencies between QueueManager, DeadLetterQueue, and HandlerDispatcher.
+        /// This is called automatically by AddMessageQueue.
+        /// </summary>
+        /// <param name="container">The Unity container.</param>
+        /// <returns>The Unity container for chaining.</returns>
+        internal static IUnityContainer WireUpMessageQueueDependencies(this IUnityContainer container)
+        {
+            // Resolve services to trigger singleton creation
+            var queueManager = container.Resolve<IQueueManager>() as QueueManager;
+            if (queueManager != null)
+            {
+                var deadLetterQueue = container.Resolve<IDeadLetterQueue>();
+                var dispatcher = container.Resolve<IHandlerDispatcher>();
+                queueManager.SetDeadLetterQueue(deadLetterQueue);
+                queueManager.SetDispatcher(dispatcher);
+            }
 
             return container;
         }
@@ -150,6 +188,7 @@ namespace MessageQueue.Core.DependencyInjection
 
         /// <summary>
         /// Builds and returns an IServiceProvider from the Unity container.
+        /// Note: Circular dependencies are already wired up by AddMessageQueue.
         /// </summary>
         /// <param name="container">The Unity container.</param>
         /// <returns>An IServiceProvider wrapping the Unity container.</returns>
