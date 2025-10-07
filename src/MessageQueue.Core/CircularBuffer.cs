@@ -122,7 +122,8 @@ public class CircularBuffer : ICircularBuffer
             if (envelope != null &&
                 envelope.Status == MessageStatus.Ready &&
                 envelope.MessageType == targetMessageType &&
-                !envelope.IsSuperseded)
+                !envelope.IsSuperseded &&
+                (!envelope.NotBefore.HasValue || envelope.NotBefore.Value <= DateTime.UtcNow))
             {
                 // Try to transition to InFlight using CAS on status
                 var leaseInfo = new LeaseInfo

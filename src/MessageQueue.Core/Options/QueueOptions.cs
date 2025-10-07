@@ -62,4 +62,19 @@ public class QueueOptions
     /// </summary>
     [Range(100, 100000)]
     public int DeadLetterQueueCapacity { get; set; } = 10000;
+
+    /// <summary>
+    /// Default retry backoff strategy
+    /// </summary>
+    public RetryBackoffStrategy DefaultBackoffStrategy { get; set; } = RetryBackoffStrategy.Exponential;
+
+    /// <summary>
+    /// Default initial backoff delay for retries
+    /// </summary>
+    public TimeSpan DefaultInitialBackoff { get; set; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Default maximum backoff delay
+    /// </summary>
+    public TimeSpan DefaultMaxBackoff { get; set; } = TimeSpan.FromMinutes(5);
 }

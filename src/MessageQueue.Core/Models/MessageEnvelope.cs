@@ -68,6 +68,11 @@ public class MessageEnvelope
     /// Superseded flag for deduplication
     /// </summary>
     public bool IsSuperseded { get; set; }
+
+    /// <summary>
+    /// Timestamp indicating when the message should be available for retry (for backoff enforcement)
+    /// </summary>
+    public DateTime? NotBefore { get; set; }
 }
 
 /// <summary>

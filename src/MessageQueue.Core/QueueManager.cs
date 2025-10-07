@@ -231,15 +231,37 @@ public class QueueManager : IQueueManager
             }
         }
 
-        bool requeued = await _buffer.RequeueAsync(messageId, cancellationToken);
+        // Calculate backoff delay
+        var newRetryCount = target.RetryCount + 1;
+        var notBefore = CalculateBackoffTime(newRetryCount);
 
-        if (!requeued)
-            throw new InvalidOperationException($"Failed to requeue message {messageId}.");
+        // Remove and update the message with backoff
+        await _buffer.RemoveAsync(messageId, cancellationToken);
+
+        // Create updated envelope with incremented retry count and backoff
+        var requeuedEnvelope = new MessageEnvelope
+        {
+            MessageId = target.MessageId,
+            MessageType = target.MessageType,
+            Payload = target.Payload,
+            DeduplicationKey = target.DeduplicationKey,
+            Status = MessageStatus.Ready,
+            RetryCount = newRetryCount,
+            MaxRetries = target.MaxRetries,
+            Lease = null,
+            LastPersistedVersion = target.LastPersistedVersion,
+            Metadata = target.Metadata,
+            EnqueuedAt = target.EnqueuedAt,
+            IsSuperseded = target.IsSuperseded,
+            NotBefore = notBefore
+        };
+
+        await _buffer.EnqueueAsync(requeuedEnvelope, cancellationToken);
 
         // Persist requeue operation
         if (_persister != null)
         {
-            await PersistOperationAsync(OperationCode.Requeue, target, cancellationToken);
+            await PersistOperationAsync(OperationCode.Requeue, requeuedEnvelope, cancellationToken);
         }
     }
 
@@ -399,6 +421,50 @@ public class QueueManager : IQueueManager
             EnqueuedAt = DateTime.UtcNow,
             IsSuperseded = false
         };
+    }
+
+    /// <summary>
+    /// Calculates the backoff time for a message retry based on retry count and configured strategy.
+    /// </summary>
+    /// <param name="retryCount">The current retry count.</param>
+    /// <returns>The timestamp when the message should be available for retry.</returns>
+    private DateTime? CalculateBackoffTime(int retryCount)
+    {
+        if (_options.DefaultBackoffStrategy == Options.RetryBackoffStrategy.None)
+        {
+            return null; // No backoff, immediately available
+        }
+
+        TimeSpan delay;
+
+        switch (_options.DefaultBackoffStrategy)
+        {
+            case Options.RetryBackoffStrategy.Fixed:
+                delay = _options.DefaultInitialBackoff;
+                break;
+
+            case Options.RetryBackoffStrategy.Linear:
+                delay = TimeSpan.FromMilliseconds(_options.DefaultInitialBackoff.TotalMilliseconds * retryCount);
+                break;
+
+            case Options.RetryBackoffStrategy.Exponential:
+                // Exponential: initialDelay * 2^(retryCount - 1)
+                var exponentialMs = _options.DefaultInitialBackoff.TotalMilliseconds * Math.Pow(2, retryCount - 1);
+                delay = TimeSpan.FromMilliseconds(exponentialMs);
+                break;
+
+            default:
+                delay = _options.DefaultInitialBackoff;
+                break;
+        }
+
+        // Cap at max backoff
+        if (delay > _options.DefaultMaxBackoff)
+        {
+            delay = _options.DefaultMaxBackoff;
+        }
+
+        return DateTime.UtcNow.Add(delay);
     }
 
     /// <summary>
