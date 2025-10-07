@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Dead-letter queue implementation and management APIs</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MessageQueue.Core\MessageQueue.Core.csproj" />
+    <ProjectReference Include="..\MessageQueue.CircularBuffer\MessageQueue.CircularBuffer.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MessageQueue.Persistence\MessageQueue.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>
