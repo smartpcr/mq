@@ -10,6 +10,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- Static version information (fallback when Git metadata is unavailable) -->
+    <VersionPrefix>0.5.0</VersionPrefix>
+    <AssemblyVersion>0.5.0.0</AssemblyVersion>
+    <FileVersion>0.5.0.0</FileVersion>
+    <InformationalVersion>0.5.0</InformationalVersion>
+
     <!-- Assembly info -->
     <Product>MQ</Product>
     <Company>AzureStack Compute</Company>
@@ -35,10 +41,6 @@
   <PropertyGroup Condition="'$(IsTestProject)' == 'true' AND '$(OS)' != 'Windows_NT'">
     <TargetFrameworks>net8.0</TargetFrameworks>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
-  </ItemGroup>
 
   <ItemGroup Condition="'$(IsTestProject)' == 'true'">
     <PackageReference Include="coverlet.collector" />
