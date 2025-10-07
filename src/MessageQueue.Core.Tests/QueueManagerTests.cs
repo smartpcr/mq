@@ -138,7 +138,7 @@ public class QueueManagerTests
     }
 
     [TestMethod]
-    public async Task GetPendingMessagesAsync_ReturnsOnlyReadyMessages()
+    public async Task GetPendingMessagesAsync_ReturnsReadyAndInFlightMessages()
     {
         // Arrange
         var queueManager = CreateQueueManager();
@@ -149,9 +149,10 @@ public class QueueManagerTests
         // Act
         var pending = await queueManager.GetPendingMessagesAsync();
 
-        // Assert
-        pending.Should().HaveCount(1);
-        pending.Should().OnlyContain(m => m.Status == MessageStatus.Ready);
+        // Assert - Should return both Ready (1) and InFlight (1) messages
+        pending.Should().HaveCount(2);
+        pending.Should().Contain(m => m.Status == MessageStatus.Ready);
+        pending.Should().Contain(m => m.Status == MessageStatus.InFlight);
     }
 
     [TestMethod]

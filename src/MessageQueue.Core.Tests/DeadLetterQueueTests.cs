@@ -70,7 +70,17 @@ public class DeadLetterQueueTests
             MessageType = "TestMessage",
             Payload = "{}"
         };
-        var exception = new InvalidOperationException("Test exception");
+
+        // Create exception with stack trace by throwing and catching it
+        Exception exception = null!;
+        try
+        {
+            throw new InvalidOperationException("Test exception");
+        }
+        catch (Exception ex)
+        {
+            exception = ex;
+        }
 
         // Act
         await _dlq.AddAsync(envelope, "Processing failed", exception);

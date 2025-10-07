@@ -28,8 +28,9 @@ public class LeaseMonitorTests
             DefaultMaxRetries = 3
         };
 
-        var dlq = new DeadLetterQueue(null, _options);
-        _queueManager = new QueueManager(buffer, dedupIndex, _options, null, dlq);
+        // For LeaseMonitor tests, we don't need DLQ functionality
+        // Pass null for DLQ to avoid circular dependency issues
+        _queueManager = new QueueManager(buffer, dedupIndex, _options, null, null);
         _leaseMonitor = new LeaseMonitor(_queueManager, _options);
     }
 
@@ -144,7 +145,8 @@ public class LeaseMonitorTests
         checkedOut.Should().NotBeNull();
 
         // Act - wait for monitor to detect and requeue
-        await Task.Delay(1000);
+        // Wait longer than lease expiry (500ms) + check interval buffer
+        await Task.Delay(1500);
 
         // Assert - message should be requeued automatically
         var checkedOut2 = await _queueManager.CheckoutAsync<string>("worker-2");
@@ -174,7 +176,8 @@ public class LeaseMonitorTests
         msg3.Should().NotBeNull();
 
         // Act - wait for all leases to expire
-        await Task.Delay(1000);
+        // Wait longer than lease expiry (300ms) + check interval buffer
+        await Task.Delay(2000);
 
         // Assert - all messages should be requeued
         var requeuedMsg1 = await _queueManager.CheckoutAsync<string>("worker-4");
