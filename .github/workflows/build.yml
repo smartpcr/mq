@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         configuration: [Debug, Release]
 
     env:
@@ -76,7 +76,7 @@ jobs:
           path: packages/*.nupkg
 
       - name: Publish NuGet package
-        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest' && github.event_name != 'pull_request' && env.NUGET_API_KEY != ''
+        if: matrix.configuration == 'Release' && matrix.os == 'ubuntu-latest' && env.NUGET_API_KEY != ''
         shell: bash
         run: |
           set -euo pipefail
