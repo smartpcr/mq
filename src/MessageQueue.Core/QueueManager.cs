@@ -34,7 +34,7 @@ public class QueueManager : IQueueManager
         ICircularBuffer buffer,
         DeduplicationIndex deduplicationIndex,
         QueueOptions options,
-        IPersister? persister = null)
+        IPersister persister = null)
     {
         _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         _deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
@@ -47,8 +47,8 @@ public class QueueManager : IQueueManager
     /// <inheritdoc/>
     public async Task<Guid> EnqueueAsync<T>(
         T message,
-        string? deduplicationKey = null,
-        string? correlationId = null,
+        string deduplicationKey = null,
+        string correlationId = null,
         CancellationToken cancellationToken = default)
     {
         if (message == null)
@@ -108,9 +108,9 @@ public class QueueManager : IQueueManager
     }
 
     /// <inheritdoc/>
-    public async Task<MessageEnvelope<T>?> CheckoutAsync<T>(
+    public async Task<MessageEnvelope<T>> CheckoutAsync<T>(
         string handlerId,
-        TimeSpan? leaseDuration = null,
+        TimeSpan leaseDuration = default(TimeSpan),
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(handlerId))
@@ -180,11 +180,11 @@ public class QueueManager : IQueueManager
     }
 
     /// <inheritdoc/>
-    public async Task RequeueAsync(Guid messageId, Exception? exception = null, CancellationToken cancellationToken = default)
+    public async Task RequeueAsync(Guid messageId, Exception exception = null, CancellationToken cancellationToken = default)
     {
         // Get all messages to find the one to requeue
         var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
-        MessageEnvelope? target = null;
+        MessageEnvelope target = null;
 
         foreach (var msg in allMessages)
         {
@@ -342,7 +342,7 @@ public class QueueManager : IQueueManager
     /// <summary>
     /// Creates a message envelope from a message object.
     /// </summary>
-    private MessageEnvelope CreateEnvelope<T>(T message, string? deduplicationKey, string? correlationId)
+    private MessageEnvelope CreateEnvelope<T>(T message, string deduplicationKey, string correlationId)
     {
         var payload = JsonSerializer.Serialize(message);
         var messageType = typeof(T).FullName ?? typeof(T).Name;
