@@ -21,6 +21,7 @@ public class QueueManager : IQueueManager
     private readonly IPersister? _persister;
     private readonly QueueOptions _options;
     private long _sequenceNumber;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, string> _messageIdToDeduplicationKey;
 
     /// <summary>
     /// Initializes a new instance of the QueueManager.
@@ -40,6 +41,7 @@ public class QueueManager : IQueueManager
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _persister = persister;
         _sequenceNumber = 0;
+        _messageIdToDeduplicationKey = new System.Collections.Concurrent.ConcurrentDictionary<Guid, string>();
     }
 
     /// <inheritdoc/>
@@ -64,8 +66,10 @@ public class QueueManager : IQueueManager
 
                 if (replaced)
                 {
-                    // Update deduplication index
+                    // Update deduplication index and reverse mapping
                     await _deduplicationIndex.UpdateAsync(deduplicationKey, envelope.MessageId, cancellationToken);
+                    _messageIdToDeduplicationKey.TryRemove(existingMessageId.Value, out _);
+                    _messageIdToDeduplicationKey.TryAdd(envelope.MessageId, deduplicationKey);
 
                     // Persist replace operation
                     if (_persister != null)
@@ -90,10 +94,11 @@ public class QueueManager : IQueueManager
         if (!enqueued)
             throw new InvalidOperationException("Queue is full. Cannot enqueue message.");
 
-        // Add to deduplication index
+        // Add to deduplication index and track reverse mapping
         if (!string.IsNullOrWhiteSpace(deduplicationKey))
         {
             await _deduplicationIndex.TryAddAsync(deduplicationKey, newEnvelope.MessageId, cancellationToken);
+            _messageIdToDeduplicationKey.TryAdd(newEnvelope.MessageId, deduplicationKey);
         }
 
         // Persist enqueue operation
@@ -170,8 +175,11 @@ public class QueueManager : IQueueManager
             await _persister.WriteOperationAsync(record, cancellationToken);
         }
 
-        // Remove from deduplication index (if applicable)
-        // Note: We would need to track dedup key -> message ID to do this properly
+        // Remove from deduplication index if it has a dedup key
+        if (_messageIdToDeduplicationKey.TryRemove(messageId, out string? dedupKey))
+        {
+            await _deduplicationIndex.RemoveAsync(dedupKey, cancellationToken);
+        }
     }
 
     /// <inheritdoc/>

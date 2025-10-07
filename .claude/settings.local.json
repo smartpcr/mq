@@ -11,7 +11,18 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
       "Bash(dotnet nuget locals:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nImplement Phase 1 & Phase 2: Core queue functionality with deduplication\n\nThis commit implements the foundational components and core queue functionality\nfor the Message Queue system.\n\n## Phase 1: Foundations & Contracts (Complete)\n- ✅ 8 core interfaces defined (IQueueManager, ICircularBuffer, IPersister, etc.)\n- ✅ 4 shared models (MessageEnvelope, DeadLetterEnvelope, OperationRecord, QueueSnapshot)\n- ✅ 2 enums (MessageStatus, OperationCode)\n- ✅ 3 option classes (QueueOptions, HandlerOptions, PersistenceOptions)\n- ✅ Test infrastructure with FluentAssertions and MSTest\n- ✅ 8/8 tests passing\n\n## Phase 2: Core Components (Complete)\n- ✅ Lock-free CircularBuffer with CAS operations\n- ✅ Thread-safe DeduplicationIndex with ConcurrentDictionary\n- ✅ QueueManager integrating buffer and deduplication\n- ✅ JournalSerializer with CRC32 validation for persistence\n- ✅ Message supersede semantics for in-flight deduplication\n- ✅ Lease-based message ownership with extension support\n- ✅ Queue metrics and monitoring APIs\n- ✅ 43/43 tests passing (100%)\n\n## Test Coverage\n- CircularBufferTests: 11 tests (enqueue, checkout, ack, requeue, replace, concurrent)\n- DeduplicationIndexTests: 13 tests (add, get, update, remove, snapshot, concurrent)\n- QueueManagerTests: 11 tests (enqueue, dedup, checkout, ack, requeue, metrics)\n- SerializationTests: 3 tests (operation codes, snapshots, enums)\n- MessageEnvelopeTests: 3 tests (serialization, status transitions, retry count)\n- DeadLetterEnvelopeTests: 2 tests (conversion, serialization)\n\n## Implementation Details\n- Lock-free circular buffer using Interlocked.CompareExchange\n- Deduplication prevents double enqueue, supersedes in-flight messages\n- CRC32 checksums for journal integrity\n- Multi-framework support (.NET 4.6.2 and .NET 8.0)\n- All tests verified on .NET 8.0\n\n## Files Added\n**Core Implementation (4 files)**:\n- src/MessageQueue.Core/CircularBuffer.cs\n- src/MessageQueue.Core/DeduplicationIndex.cs\n- src/MessageQueue.Core/QueueManager.cs\n- src/MessageQueue.Persistence/Serialization/JournalSerializer.cs\n\n**Interfaces (8 files)** in src/MessageQueue.Core/Interfaces/\n**Models (4 files)** in src/MessageQueue.Core/Models/\n**Enums (2 files)** in src/MessageQueue.Core/Enums/\n**Options (3 files)** in src/MessageQueue.Core/Options/\n\n**Tests (6 files)** in src/MessageQueue.Core.Tests/\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(curl:*)",
+      "Bash(sudo dd:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(sudo tee:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(gh:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

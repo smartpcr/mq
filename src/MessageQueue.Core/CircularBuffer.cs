@@ -190,36 +190,18 @@ public class CircularBuffer : ICircularBuffer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Find message by ID and mark as completed
+        // Find message by ID and remove it directly
         for (int i = 0; i < _capacity; i++)
         {
             var envelope = Interlocked.CompareExchange(ref _slots[i], null, null); // Read current value
 
             if (envelope != null && envelope.MessageId == messageId)
             {
-                // Update status to Completed
-                var completed = new MessageEnvelope
-                {
-                    MessageId = envelope.MessageId,
-                    MessageType = envelope.MessageType,
-                    Payload = envelope.Payload,
-                    DeduplicationKey = envelope.DeduplicationKey,
-                    Status = MessageStatus.Completed,
-                    RetryCount = envelope.RetryCount,
-                    MaxRetries = envelope.MaxRetries,
-                    Lease = envelope.Lease,
-                    LastPersistedVersion = envelope.LastPersistedVersion,
-                    Metadata = envelope.Metadata,
-                    EnqueuedAt = envelope.EnqueuedAt,
-                    IsSuperseded = envelope.IsSuperseded
-                };
-
-                // Try to update with CAS
-                var original = Interlocked.CompareExchange(ref _slots[i], completed, envelope);
+                // Directly remove the message from the slot with CAS
+                var original = Interlocked.CompareExchange(ref _slots[i], null, envelope);
                 if (ReferenceEquals(original, envelope))
                 {
-                    // Successfully acknowledged, now clear the slot
-                    Interlocked.CompareExchange(ref _slots[i], null, completed);
+                    // Successfully acknowledged and removed
                     return Task.FromResult(true);
                 }
             }
