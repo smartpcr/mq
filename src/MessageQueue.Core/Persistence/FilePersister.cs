@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence
+namespace MessageQueue.Core.Persistence
 {
     using System;
     using System.Collections.Generic;
@@ -15,7 +15,7 @@ namespace MessageQueue.Persistence
     using MessageQueue.Core.Interfaces;
     using MessageQueue.Core.Models;
     using MessageQueue.Core.Options;
-    using MessageQueue.Persistence.Serialization;
+    using MessageQueue.Core.Persistence.Serialization;
 
     /// <summary>
     /// File-based implementation of IPersister using write-ahead logging and snapshots.

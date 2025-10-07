@@ -4,18 +4,17 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence.Tests.Integration;
+namespace MessageQueue.Integration.Tests;
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core;
 using MessageQueue.Core.Enums;
-using MessageQueue.Core.Models;
 using MessageQueue.Core.Options;
+using MessageQueue.Core.Persistence;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]

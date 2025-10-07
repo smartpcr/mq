@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence.Serialization;
+namespace MessageQueue.Core.Persistence.Serialization;
 
 using System;
 using System.IO;
@@ -40,14 +40,14 @@ public class JournalSerializer
         cancellationToken.ThrowIfCancellationRequested();
 
         // Serialize the record to JSON
-        var json = JsonSerializer.Serialize(record, JsonOptions);
+        var json = JsonSerializer.Serialize(record, JournalSerializer.JsonOptions);
         var payloadBytes = Encoding.UTF8.GetBytes(json);
 
         // Calculate CRC32 checksum
-        uint crc = CalculateCrc32(payloadBytes);
+        uint crc = JournalSerializer.CalculateCrc32(payloadBytes);
 
         // Create buffer with header + payload
-        var buffer = new byte[RecordHeaderSize + payloadBytes.Length];
+        var buffer = new byte[JournalSerializer.RecordHeaderSize + payloadBytes.Length];
 
         // Write header: [SequenceNumber(8)] [PayloadLength(4)] [CRC(4)]
         using (var ms = new MemoryStream(buffer))
@@ -73,7 +73,7 @@ public class JournalSerializer
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
-        if (data.Length < RecordHeaderSize)
+        if (data.Length < JournalSerializer.RecordHeaderSize)
             throw new ArgumentException("Data is too short to contain a valid record.", nameof(data));
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -87,20 +87,20 @@ public class JournalSerializer
             uint expectedCrc = reader.ReadUInt32();
 
             // Validate payload length
-            if (data.Length < RecordHeaderSize + payloadLength)
+            if (data.Length < JournalSerializer.RecordHeaderSize + payloadLength)
                 throw new InvalidDataException("Data length does not match payload length in header.");
 
             // Read payload
             var payloadBytes = reader.ReadBytes(payloadLength);
 
             // Validate CRC
-            uint actualCrc = CalculateCrc32(payloadBytes);
+            uint actualCrc = JournalSerializer.CalculateCrc32(payloadBytes);
             if (actualCrc != expectedCrc)
                 throw new InvalidDataException($"CRC mismatch. Expected: {expectedCrc}, Actual: {actualCrc}");
 
             // Deserialize JSON payload
             var json = Encoding.UTF8.GetString(payloadBytes);
-            var record = JsonSerializer.Deserialize<OperationRecord>(json, JsonOptions);
+            var record = JsonSerializer.Deserialize<OperationRecord>(json, JournalSerializer.JsonOptions);
 
             if (record == null)
                 throw new InvalidDataException("Failed to deserialize operation record.");
@@ -138,13 +138,13 @@ public class JournalSerializer
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
-        if (data.Length < RecordHeaderSize)
+        if (data.Length < JournalSerializer.RecordHeaderSize)
             throw new ArgumentException("Data is too short to contain record header.", nameof(data));
 
         cancellationToken.ThrowIfCancellationRequested();
 
         int payloadLength = BitConverter.ToInt32(data, 8); // Offset 8 for sequence number
-        int totalSize = RecordHeaderSize + payloadLength;
+        int totalSize = JournalSerializer.RecordHeaderSize + payloadLength;
         return Task.FromResult(totalSize);
     }
 

@@ -14,6 +14,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace MessageQueue.ChaosTests;
 
+using MessageQueue.Core.Persistence;
+
 /// <summary>
 /// Chaos tests for persistence failure scenarios.
 /// </summary>
@@ -57,7 +59,7 @@ public class PersistenceFailureTests
         var buffer = new CircularBuffer(options.Capacity);
         var dedupIndex = new DeduplicationIndex();
 
-        var recoveryService = new MessageQueue.Persistence.RecoveryService(
+        var recoveryService = new RecoveryService(
             corruptedPersister,
             buffer,
             dedupIndex);

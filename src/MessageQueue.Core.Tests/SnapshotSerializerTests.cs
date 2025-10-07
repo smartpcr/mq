@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence.Tests.Unit;
+namespace MessageQueue.Core.Tests;
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core.Enums;
 using MessageQueue.Core.Models;
-using MessageQueue.Persistence.Serialization;
+using MessageQueue.Core.Persistence.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]
@@ -31,7 +31,7 @@ public class SnapshotSerializerTests
     public async Task SerializeAsync_WithValidSnapshot_ReturnsValidByteArray()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
 
         // Act
         var result = await this.serializer.SerializeAsync(snapshot);
@@ -53,7 +53,7 @@ public class SnapshotSerializerTests
     public async Task DeserializeAsync_WithValidData_ReturnsOriginalSnapshot()
     {
         // Arrange
-        var original = CreateTestSnapshot();
+        var original = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Act
@@ -92,7 +92,7 @@ public class SnapshotSerializerTests
     public async Task DeserializeAsync_WithInvalidMagicNumber_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestSnapshot();
+        var original = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the magic number (first 8 bytes)
@@ -108,7 +108,7 @@ public class SnapshotSerializerTests
     public async Task DeserializeAsync_WithCorruptedCrc_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestSnapshot();
+        var original = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the CRC (bytes 20-23 in header)
@@ -124,7 +124,7 @@ public class SnapshotSerializerTests
     public async Task DeserializeAsync_WithCorruptedPayload_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestSnapshot();
+        var original = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the payload (after header)
@@ -139,7 +139,7 @@ public class SnapshotSerializerTests
     public async Task DeserializeAsync_WithVersionMismatch_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestSnapshot();
+        var original = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the version in header (bytes 8-15)
@@ -158,7 +158,7 @@ public class SnapshotSerializerTests
     public async Task ReadVersionAsync_WithValidData_ReturnsCorrectVersion()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
         snapshot.Version = 42;
         var serialized = await this.serializer.SerializeAsync(snapshot);
 
@@ -206,7 +206,7 @@ public class SnapshotSerializerTests
     public async Task ValidateHeaderAsync_WithValidData_ReturnsTrue()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(snapshot);
 
         // Act
@@ -243,7 +243,7 @@ public class SnapshotSerializerTests
     public async Task ValidateHeaderAsync_WithInvalidMagic_ReturnsFalse()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
         var serialized = await this.serializer.SerializeAsync(snapshot);
         serialized[0] ^= 0xFF; // Corrupt magic
 
@@ -283,10 +283,10 @@ public class SnapshotSerializerTests
     public async Task SerializeDeserialize_WithMultipleMessages_PreservesOrder()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
-        var msg1 = CreateTestMessage("msg1");
-        var msg2 = CreateTestMessage("msg2");
-        var msg3 = CreateTestMessage("msg3");
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
+        var msg1 = SnapshotSerializerTests.CreateTestMessage("msg1");
+        var msg2 = SnapshotSerializerTests.CreateTestMessage("msg2");
+        var msg3 = SnapshotSerializerTests.CreateTestMessage("msg3");
 
         snapshot.Messages = new List<MessageEnvelope> { msg1, msg2, msg3 };
         snapshot.MessageCount = 3;
@@ -306,7 +306,7 @@ public class SnapshotSerializerTests
     public async Task SerializeDeserialize_WithDeduplicationIndex_PreservesEntries()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
         var guid1 = Guid.NewGuid();
         var guid2 = Guid.NewGuid();
         var guid3 = Guid.NewGuid();
@@ -333,12 +333,12 @@ public class SnapshotSerializerTests
     public async Task SerializeDeserialize_WithLargeSnapshot_WorksCorrectly()
     {
         // Arrange
-        var snapshot = CreateTestSnapshot();
+        var snapshot = SnapshotSerializerTests.CreateTestSnapshot();
         snapshot.Messages = new List<MessageEnvelope>();
 
         for (int i = 0; i < 100; i++)
         {
-            snapshot.Messages.Add(CreateTestMessage($"message-{i}"));
+            snapshot.Messages.Add(SnapshotSerializerTests.CreateTestMessage($"message-{i}"));
         }
         snapshot.MessageCount = 100;
 
@@ -361,7 +361,7 @@ public class SnapshotSerializerTests
             MessageCount = 1,
             Messages = new List<MessageEnvelope>
             {
-                CreateTestMessage("test")
+                SnapshotSerializerTests.CreateTestMessage("test")
             },
             DeduplicationIndex = new Dictionary<string, Guid>(),
             DeadLetterMessages = new List<DeadLetterEnvelope>()

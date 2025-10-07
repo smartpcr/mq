@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MessageQueue.Core\MessageQueue.Core.csproj" />
-    <ProjectReference Include="..\MessageQueue.Persistence\MessageQueue.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>

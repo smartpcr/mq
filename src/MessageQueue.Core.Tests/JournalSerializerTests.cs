@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence.Tests.Unit;
+namespace MessageQueue.Core.Tests;
 
 using System;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core.Enums;
 using MessageQueue.Core.Models;
-using MessageQueue.Persistence.Serialization;
+using MessageQueue.Core.Persistence.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]
@@ -30,7 +30,7 @@ public class JournalSerializerTests
     public async Task SerializeAsync_WithValidRecord_ReturnsValidByteArray()
     {
         // Arrange
-        var record = CreateTestRecord();
+        var record = JournalSerializerTests.CreateTestRecord();
 
         // Act
         var result = await this.serializer.SerializeAsync(record);
@@ -52,7 +52,7 @@ public class JournalSerializerTests
     public async Task DeserializeAsync_WithValidData_ReturnsOriginalRecord()
     {
         // Arrange
-        var original = CreateTestRecord();
+        var original = JournalSerializerTests.CreateTestRecord();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Act
@@ -91,7 +91,7 @@ public class JournalSerializerTests
     public async Task DeserializeAsync_WithCorruptedCrc_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestRecord();
+        var original = JournalSerializerTests.CreateTestRecord();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the CRC (bytes 12-15 in header)
@@ -107,7 +107,7 @@ public class JournalSerializerTests
     public async Task DeserializeAsync_WithCorruptedPayload_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestRecord();
+        var original = JournalSerializerTests.CreateTestRecord();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the payload (after header)
@@ -122,7 +122,7 @@ public class JournalSerializerTests
     public async Task DeserializeAsync_WithInvalidPayloadLength_ThrowsInvalidDataException()
     {
         // Arrange
-        var original = CreateTestRecord();
+        var original = JournalSerializerTests.CreateTestRecord();
         var serialized = await this.serializer.SerializeAsync(original);
 
         // Corrupt the payload length (bytes 8-11 in header) to be larger than actual data
@@ -139,7 +139,7 @@ public class JournalSerializerTests
     public async Task ReadSequenceNumberAsync_WithValidData_ReturnsCorrectSequenceNumber()
     {
         // Arrange
-        var record = CreateTestRecord();
+        var record = JournalSerializerTests.CreateTestRecord();
         record.SequenceNumber = 42;
         var serialized = await this.serializer.SerializeAsync(record);
 
@@ -174,7 +174,7 @@ public class JournalSerializerTests
     public async Task ReadRecordSizeAsync_WithValidData_ReturnsCorrectSize()
     {
         // Arrange
-        var record = CreateTestRecord();
+        var record = JournalSerializerTests.CreateTestRecord();
         var serialized = await this.serializer.SerializeAsync(record);
 
         // Act
@@ -211,7 +211,7 @@ public class JournalSerializerTests
         foreach (OperationCode opCode in Enum.GetValues(typeof(OperationCode)))
         {
             // Arrange
-            var record = CreateTestRecord();
+            var record = JournalSerializerTests.CreateTestRecord();
             record.OperationCode = opCode;
 
             // Act
@@ -227,7 +227,7 @@ public class JournalSerializerTests
     public async Task SerializeDeserialize_WithLargePayload_WorksCorrectly()
     {
         // Arrange
-        var record = CreateTestRecord();
+        var record = JournalSerializerTests.CreateTestRecord();
         record.Payload = new string('X', 10000); // Large payload
 
         // Act
@@ -243,7 +243,7 @@ public class JournalSerializerTests
     public async Task SerializeDeserialize_WithEmptyPayload_WorksCorrectly()
     {
         // Arrange
-        var record = CreateTestRecord();
+        var record = JournalSerializerTests.CreateTestRecord();
         record.Payload = string.Empty;
 
         // Act
@@ -258,7 +258,7 @@ public class JournalSerializerTests
     public async Task SerializeDeserialize_WithSpecialCharacters_WorksCorrectly()
     {
         // Arrange
-        var record = CreateTestRecord();
+        var record = JournalSerializerTests.CreateTestRecord();
         record.Payload = "{\"test\":\"こんにちは\",\"emoji\":\"🤖\",\"special\":\"\\n\\t\\\"\"}";
 
         // Act
@@ -273,15 +273,15 @@ public class JournalSerializerTests
     public async Task MultipleRecords_SerializeDeserialize_MaintainIndependence()
     {
         // Arrange
-        var record1 = CreateTestRecord();
+        var record1 = JournalSerializerTests.CreateTestRecord();
         record1.SequenceNumber = 1;
         record1.OperationCode = OperationCode.Enqueue;
 
-        var record2 = CreateTestRecord();
+        var record2 = JournalSerializerTests.CreateTestRecord();
         record2.SequenceNumber = 2;
         record2.OperationCode = OperationCode.Checkout;
 
-        var record3 = CreateTestRecord();
+        var record3 = JournalSerializerTests.CreateTestRecord();
         record3.SequenceNumber = 3;
         record3.OperationCode = OperationCode.Acknowledge;
 

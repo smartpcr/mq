@@ -4,14 +4,14 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+namespace MessageQueue.Performance.Tests;
+
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using MessageQueue.Core;
 using MessageQueue.Core.Interfaces;
 using MessageQueue.Core.Options;
-using MessageQueue.Persistence;
-
-namespace MessageQueue.Performance.Tests;
+using MessageQueue.Core.Persistence;
 
 /// <summary>
 /// Benchmarks for persistence operations.

@@ -30,7 +30,10 @@
       "Bash(done)",
       "Bash(do rm -rf \"$dir\")",
       "Bash(xargs cat:*)",
-      "Read(//home/xiaodoli/.nuget/NuGet/**)"
+      "Read(//home/xiaodoli/.nuget/NuGet/**)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(awk:*)",
+      "Bash(cut:*)"
     ],
     "deny": [],
     "ask": []

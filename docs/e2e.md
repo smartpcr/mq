@@ -58,7 +58,18 @@ Administrative scenarios exercise the operational surface area described in the 
 | Snapshot without persistence | Ensures snapshot-triggering fails gracefully when persistence is not configured. | `AdminOperationsTests.AdminApi_WithNoPersistence_TriggerSnapshot_ThrowsException` |
 | Replay without DLQ | Validates admin error handling when DLQ support is disabled. | `AdminOperationsTests.AdminApi_WithNoDLQ_ReplayDeadLetter_ThrowsException` |
 
-## 5. Traceability Checklist
+## 5. Channel-Based Signaling & Auto-Dispatch
+
+These scenarios validate the channel-based notification system and automatic dispatcher signaling introduced to eliminate timer-based polling and manual signal calls.
+
+| Scenario | Description | Test Coverage |
+| --- | --- | --- |
+| Auto-signaling (unbounded) | Verifies messages are automatically processed without manual `SignalMessageReady()` calls using unbounded channel mode. | `DispatcherAutoSignalingTests.AutoSignaling_UnboundedChannel_ProcessesMessagesWithoutManualSignal` |
+| Auto-signaling (bounded coalescing) | Tests bounded coalescing channel mode where signals collapse when workers are busy, ensuring all messages are eventually processed. | `DispatcherAutoSignalingTests.AutoSignaling_BoundedCoalescingChannel_ProcessesMultipleMessages` |
+| Mixed message types | Validates independent channel management for different message types with different channel modes (unbounded vs bounded). | `DispatcherAutoSignalingTests.AutoSignaling_MixedMessageTypes_EachTypeProcessedIndependently` |
+| Auto-signal with deduplication | Confirms auto-signaling works correctly when messages are replaced via deduplication. | `DispatcherAutoSignalingTests.AutoSignaling_WithDeduplication_AutoSignalsReplacedMessage` |
+
+## 6. Traceability Checklist
 
 To maintain parity between automated coverage and documented flows:
 
@@ -67,7 +78,7 @@ To maintain parity between automated coverage and documented flows:
 3. Cross-reference the design/plan to confirm each architectural pillar retains end-to-end validation.
 4. Use the scenario identifiers as building blocks for manual or exploratory testing during release hardening.
 
-## 6. Future Enhancements
+## 7. Future Enhancements
 
 - Expand this catalog with stress and recovery scenarios once long-running soak and chaos suites graduate into the main integration pipeline.
 - Link each scenario to dashboard views or runbooks as operational tooling matures.

@@ -7,12 +7,13 @@
 using MessageQueue.Core;
 using MessageQueue.Core.Interfaces;
 using MessageQueue.Core.Options;
-using MessageQueue.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System.Diagnostics;
 
 namespace MessageQueue.SoakTests;
+
+using MessageQueue.Core.Persistence;
 
 /// <summary>
 /// 24-hour soak test to validate system stability under sustained load.

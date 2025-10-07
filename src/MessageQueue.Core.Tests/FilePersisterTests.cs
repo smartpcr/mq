@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence.Tests.Unit;
+namespace MessageQueue.Core.Tests;
 
 using System;
 using System.IO;
@@ -14,6 +14,7 @@ using FluentAssertions;
 using MessageQueue.Core.Enums;
 using MessageQueue.Core.Models;
 using MessageQueue.Core.Options;
+using MessageQueue.Core.Persistence;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]
@@ -73,7 +74,7 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var operation = CreateTestOperation();
+        var operation = FilePersisterTests.CreateTestOperation();
 
         // Act
         await persister.WriteOperationAsync(operation);
@@ -99,7 +100,7 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var snapshot = CreateTestSnapshot();
+        var snapshot = FilePersisterTests.CreateTestSnapshot();
 
         // Act
         await persister.CreateSnapshotAsync(snapshot);
@@ -138,7 +139,7 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var original = CreateTestSnapshot();
+        var original = FilePersisterTests.CreateTestSnapshot();
         await persister.CreateSnapshotAsync(original);
 
         // Act
@@ -169,9 +170,9 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var op1 = CreateTestOperation(1, OperationCode.Enqueue);
-        var op2 = CreateTestOperation(2, OperationCode.Checkout);
-        var op3 = CreateTestOperation(3, OperationCode.Acknowledge);
+        var op1 = FilePersisterTests.CreateTestOperation(1, OperationCode.Enqueue);
+        var op2 = FilePersisterTests.CreateTestOperation(2, OperationCode.Checkout);
+        var op3 = FilePersisterTests.CreateTestOperation(3, OperationCode.Acknowledge);
 
         await persister.WriteOperationAsync(op1);
         await persister.WriteOperationAsync(op2);
@@ -193,9 +194,9 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var op1 = CreateTestOperation(1, OperationCode.Enqueue);
-        var op2 = CreateTestOperation(2, OperationCode.Checkout);
-        var op3 = CreateTestOperation(3, OperationCode.Acknowledge);
+        var op1 = FilePersisterTests.CreateTestOperation(1, OperationCode.Enqueue);
+        var op2 = FilePersisterTests.CreateTestOperation(2, OperationCode.Checkout);
+        var op3 = FilePersisterTests.CreateTestOperation(3, OperationCode.Acknowledge);
 
         await persister.WriteOperationAsync(op1);
         await persister.WriteOperationAsync(op2);
@@ -216,9 +217,9 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var op1 = CreateTestOperation(1, OperationCode.Enqueue);
-        var op2 = CreateTestOperation(2, OperationCode.Checkout);
-        var op3 = CreateTestOperation(3, OperationCode.Acknowledge);
+        var op1 = FilePersisterTests.CreateTestOperation(1, OperationCode.Enqueue);
+        var op2 = FilePersisterTests.CreateTestOperation(2, OperationCode.Checkout);
+        var op3 = FilePersisterTests.CreateTestOperation(3, OperationCode.Acknowledge);
 
         await persister.WriteOperationAsync(op1);
         await persister.WriteOperationAsync(op2);
@@ -257,7 +258,7 @@ public class FilePersisterTests
         // Write 5 operations
         for (int i = 1; i <= 5; i++)
         {
-            await persister.WriteOperationAsync(CreateTestOperation(i));
+            await persister.WriteOperationAsync(FilePersisterTests.CreateTestOperation(i));
         }
 
         // Act
@@ -294,11 +295,11 @@ public class FilePersisterTests
         // Write 5 operations
         for (int i = 1; i <= 5; i++)
         {
-            await persister.WriteOperationAsync(CreateTestOperation(i));
+            await persister.WriteOperationAsync(FilePersisterTests.CreateTestOperation(i));
         }
 
         // Create snapshot
-        await persister.CreateSnapshotAsync(CreateTestSnapshot());
+        await persister.CreateSnapshotAsync(FilePersisterTests.CreateTestSnapshot());
 
         // Act
         var should = persister.ShouldSnapshot();
@@ -312,11 +313,11 @@ public class FilePersisterTests
     {
         // Arrange
         using var persister = new FilePersister(this.options);
-        var snapshot1 = CreateTestSnapshot();
+        var snapshot1 = FilePersisterTests.CreateTestSnapshot();
         snapshot1.Version = 1;
         await persister.CreateSnapshotAsync(snapshot1);
 
-        var snapshot2 = CreateTestSnapshot();
+        var snapshot2 = FilePersisterTests.CreateTestSnapshot();
         snapshot2.Version = 2;
 
         // Act
@@ -338,7 +339,7 @@ public class FilePersisterTests
         for (int i = 1; i <= 20; i++)
         {
             var opCode = (OperationCode)(i % 5); // Cycle through operation codes
-            await persister.WriteOperationAsync(CreateTestOperation(i, opCode));
+            await persister.WriteOperationAsync(FilePersisterTests.CreateTestOperation(i, opCode));
         }
 
         // Act

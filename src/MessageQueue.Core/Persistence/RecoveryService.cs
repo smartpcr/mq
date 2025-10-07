@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace MessageQueue.Persistence
+namespace MessageQueue.Core.Persistence
 {
     using System;
     using System.Collections.Generic;
