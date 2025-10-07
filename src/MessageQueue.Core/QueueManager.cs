@@ -89,10 +89,7 @@ public class QueueManager : IQueueManager
 
         // No deduplication or new message
         var newEnvelope = CreateEnvelope(message, deduplicationKey, correlationId);
-        bool enqueued = await _buffer.EnqueueAsync(newEnvelope, cancellationToken);
-
-        if (!enqueued)
-            throw new InvalidOperationException("Queue is full. Cannot enqueue message.");
+        await _buffer.EnqueueAsync(newEnvelope, cancellationToken);
 
         // Add to deduplication index and track reverse mapping
         if (!string.IsNullOrWhiteSpace(deduplicationKey))
