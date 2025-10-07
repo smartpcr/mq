@@ -52,7 +52,7 @@ public class QueueOptions
     /// <summary>
     /// Lease monitor check interval
     /// </summary>
-    public TimeSpan LeaseMonitorInterval { get; set; } = TimeSpan.FromSeconds(5);
+    public TimeSpan LeaseMonitorInterval { get; set; } = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Enable persistence (set to false for in-memory only mode)
