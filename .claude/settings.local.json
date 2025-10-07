@@ -7,7 +7,11 @@
       "Bash(dotnet sln:*)",
       "Bash(dotnet build:*)",
       "Bash(tree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet nuget locals:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
