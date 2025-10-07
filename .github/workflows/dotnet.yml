@@ -1,0 +1,45 @@
+name: .NET Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Detect test projects
+        id: detect-tests
+        shell: bash
+        run: |
+          if grep -rl "<IsTestProject>true" --include "*.csproj" . >/dev/null; then
+            echo "has-tests=true" >> "$GITHUB_OUTPUT"
+          elif grep -rl "<PackageReference Include=\"Microsoft.NET.Test.Sdk\"" --include "*.csproj" . >/dev/null; then
+            echo "has-tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test
+        if: steps.detect-tests.outputs.has-tests == 'true'
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Skip tests (no test projects found)
+        if: steps.detect-tests.outputs.has-tests != 'true'
+        run: echo "No test projects found. Skipping tests."
