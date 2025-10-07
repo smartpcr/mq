@@ -7,7 +7,22 @@
       "Bash(dotnet sln:*)",
       "Bash(dotnet build:*)",
       "Bash(tree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet nuget locals:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(curl:*)",
+      "Bash(sudo dd:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(sudo tee:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(gh:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
