@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' AND '$(OS)' != 'Windows_NT'">
+    <TargetFrameworks>net8.0</TargetFrameworks>
+  </PropertyGroup>
+</Project>
