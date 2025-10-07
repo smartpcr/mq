@@ -42,19 +42,20 @@ public class CircularBuffer : ICircularBuffer
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Try to find an empty slot
+        envelope.Status = MessageStatus.Ready;
+
+        // Try to find an empty slot first
         for (int attempt = 0; attempt < _capacity; attempt++)
         {
             long currentWrite = Interlocked.Read(ref _writePosition);
             int slotIndex = (int)(currentWrite % _capacity);
 
-            // Try to claim this slot with CAS
+            // Try to claim this slot with CAS (null = empty slot)
             var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, null);
 
             if (currentSlot == null)
             {
-                // Successfully claimed the slot
-                envelope.Status = MessageStatus.Ready;
+                // Successfully claimed an empty slot
                 Interlocked.Increment(ref _writePosition);
                 return Task.FromResult(true);
             }
@@ -63,8 +64,39 @@ public class CircularBuffer : ICircularBuffer
             Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
         }
 
-        // Buffer is full
-        return Task.FromResult(false);
+        // Buffer is full - drop oldest message (overwrite at write position)
+        // Find the oldest Ready message to drop
+        for (int attempt = 0; attempt < _capacity; attempt++)
+        {
+            long currentWrite = Interlocked.Read(ref _writePosition);
+            int slotIndex = (int)(currentWrite % _capacity);
+
+            var currentSlot = Interlocked.CompareExchange(ref _slots[slotIndex], null, null);
+
+            // Only drop Ready messages (not in-flight)
+            if (currentSlot != null && currentSlot.Status == MessageStatus.Ready)
+            {
+                // Try to replace with new message
+                var replaced = Interlocked.CompareExchange(ref _slots[slotIndex], envelope, currentSlot);
+                if (ReferenceEquals(replaced, currentSlot))
+                {
+                    // Successfully dropped oldest and added new
+                    Interlocked.Increment(ref _writePosition);
+                    return Task.FromResult(true);
+                }
+            }
+
+            // Try next slot
+            Interlocked.CompareExchange(ref _writePosition, currentWrite + 1, currentWrite);
+        }
+
+        // If we can't drop any Ready messages (all are in-flight), force overwrite at write position
+        long finalWrite = Interlocked.Read(ref _writePosition);
+        int finalSlot = (int)(finalWrite % _capacity);
+        Interlocked.Exchange(ref _slots[finalSlot], envelope);
+        Interlocked.Increment(ref _writePosition);
+
+        return Task.FromResult(true);
     }
 
     /// <inheritdoc/>

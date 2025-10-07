@@ -28,18 +28,29 @@ public class CircularBufferTests
     }
 
     [TestMethod]
-    public async Task EnqueueAsync_WhenFull_ReturnsFalse()
+    public async Task EnqueueAsync_WhenFull_DropsOldestAndAddsNew()
     {
         // Arrange
         var buffer = new CircularBuffer(2);
-        await buffer.EnqueueAsync(CreateTestEnvelope());
-        await buffer.EnqueueAsync(CreateTestEnvelope());
+        var msg1 = CreateTestEnvelope();
+        var msg2 = CreateTestEnvelope();
+        var msg3 = CreateTestEnvelope();
 
-        // Act
-        bool result = await buffer.EnqueueAsync(CreateTestEnvelope());
+        await buffer.EnqueueAsync(msg1);
+        await buffer.EnqueueAsync(msg2);
+
+        // Act - buffer is full, should drop oldest (msg1) and add msg3
+        bool result = await buffer.EnqueueAsync(msg3);
 
         // Assert
-        result.Should().BeFalse();
+        result.Should().BeTrue();
+        var count = await buffer.GetCountAsync();
+        count.Should().Be(2); // Still 2 messages
+
+        var messages = await buffer.GetAllMessagesAsync();
+        messages.Should().NotContain(m => m.MessageId == msg1.MessageId); // msg1 dropped
+        messages.Should().Contain(m => m.MessageId == msg2.MessageId); // msg2 still there
+        messages.Should().Contain(m => m.MessageId == msg3.MessageId); // msg3 added
     }
 
     [TestMethod]
