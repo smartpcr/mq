@@ -1,4 +1,4 @@
-name: .NET Build and Test
+name: Build, Test, and Publish Package
 
 on:
   push:
@@ -47,11 +47,16 @@ jobs:
         run: echo "No test projects found. Skipping tests."
 
       - name: Pack NuGet package
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj --configuration Release --no-build --output ./artifacts
+        run: dotnet pack src/MessageQueue.Core/MessageQueue.Core.csproj --configuration Release --no-build --output ./artifacts -p:ContinuousIntegrationBuild=true
+
+      - name: Upload NuGet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.nupkg
 
       - name: Publish NuGet package
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
