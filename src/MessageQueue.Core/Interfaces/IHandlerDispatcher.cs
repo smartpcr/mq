@@ -1,4 +1,9 @@
-namespace MessageQueue.Core.Interfaces;
+namespace MessageQueue.Core.Interfaces
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
 /// <summary>
 /// Dispatches messages to registered handlers with parallelism control and timeout enforcement.
@@ -36,16 +41,24 @@ public interface IHandlerDispatcher
     /// Gets current handler statistics.
     /// </summary>
     Task<HandlerStatistics> GetStatisticsAsync(Type messageType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets metrics for all registered handlers.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping message type name to handler metrics.</returns>
+    Task<Dictionary<string, HandlerMetricsSnapshot>> GetMetricsAsync(CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Handler execution statistics
-/// </summary>
-public class HandlerStatistics
-{
-    public Type MessageType { get; set; } = null!;
-    public int ActiveWorkers { get; set; }
-    public int TotalProcessed { get; set; }
-    public int TotalFailed { get; set; }
-    public TimeSpan AverageExecutionTime { get; set; }
+    /// <summary>
+    /// Handler execution statistics
+    /// </summary>
+    public class HandlerStatistics
+    {
+        public Type MessageType { get; set; } = null!;
+        public int ActiveWorkers { get; set; }
+        public int TotalProcessed { get; set; }
+        public int TotalFailed { get; set; }
+        public TimeSpan AverageExecutionTime { get; set; }
+    }
 }

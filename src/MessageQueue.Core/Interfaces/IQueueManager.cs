@@ -77,6 +77,19 @@ public interface IQueueManager
     /// Gets a specific message by ID
     /// </summary>
     Task<MessageEnvelope?> GetMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a snapshot of the current queue state
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Queue snapshot.</returns>
+    Task<MessageQueue.Core.Models.QueueSnapshot> CreateSnapshotAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Triggers a snapshot if persistence conditions are met
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task CheckAndCreateSnapshotAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
