@@ -50,4 +50,19 @@
     <PackageReference Include="MSTest.TestAdapter" />
     <PackageReference Include="MSTest.TestFramework" />
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
+    <Owners>$(Authors)</Owners>
+    <ID>$(AssemblyName)</ID>
+    <Title>$(AssemblyName)</Title>
+    <PackageId>$(AssemblyName)</PackageId>
+    <PackageVersion>$(NuGetPackageVersion)</PackageVersion>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/smartpcr/common</PackageProjectUrl>
+    <Copyright>Copyright 2024</Copyright>
+    <RequireLicenseAcceptance>False</RequireLicenseAcceptance>
+    <NoPackageAnalysis>True</NoPackageAnalysis>
+    <GenerateSymbolPackage>False</GenerateSymbolPackage>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
 </Project>

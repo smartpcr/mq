@@ -10,6 +10,7 @@
     <Authors>Microsoft Corp.</Authors>
     <Company>Microsoft Corp.</Company>
     <Product>MessageQueue</Product>
+    <IsPackable>true</IsPackable>
     <PackageTags>messagequeue;queue;concurrent;lock-free;persistence;deduplication</PackageTags>
     <PackageProjectUrl>https://github.com/microsoft/messagequeue</PackageProjectUrl>
     <RepositoryUrl>https://github.com/microsoft/messagequeue</RepositoryUrl>
