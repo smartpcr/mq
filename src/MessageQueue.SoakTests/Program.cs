@@ -244,6 +244,8 @@ public class Program
 
     private class WorkMessageHandler : IMessageHandler<WorkMessage>
     {
+        private static readonly Random Random = new Random();
+
         public async Task HandleAsync(WorkMessage message, CancellationToken cancellationToken)
         {
             // Simulate work
@@ -252,7 +254,7 @@ public class Program
             Interlocked.Increment(ref TotalProcessed);
 
             // Simulate occasional failures (5% failure rate)
-            if (Random.Shared.Next(100) < 5)
+            if (Random.Next(100) < 5)
             {
                 Interlocked.Increment(ref TotalFailed);
                 throw new Exception("Simulated handler failure");

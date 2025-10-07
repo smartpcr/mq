@@ -35,14 +35,11 @@ public class DeadLetterQueueIntegrationTests
             DefaultMaxRetries = 3
         };
 
-        this.dlq = new DeadLetterQueue(null, this.options); // We'll create QueueManager with DLQ next
-        this.queueManager = new QueueManager(buffer, dedupIndex, this.options, null, this.dlq);
+        // Create queue manager first without DLQ
+        this.queueManager = new QueueManager(buffer, dedupIndex, this.options, null, null);
 
-        // Recreate DLQ with actual queue manager
+        // Create DLQ with the queue manager
         this.dlq = new DeadLetterQueue(this.queueManager, this.options);
-
-        // Recreate queue manager with proper DLQ
-        this.queueManager = new QueueManager(buffer, dedupIndex, this.options, null, this.dlq);
 
         this.leaseMonitor = new LeaseMonitor(this.queueManager, this.options);
     }

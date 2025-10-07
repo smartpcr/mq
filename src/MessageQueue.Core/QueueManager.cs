@@ -384,11 +384,19 @@ public class QueueManager : IQueueManager
     {
         if (this.persister != null && this.persister.ShouldSnapshot())
         {
-            var snapshot = await this.CreateSnapshotAsync(cancellationToken);
-            await this.persister.CreateSnapshotAsync(snapshot, cancellationToken);
+            try
+            {
+                var snapshot = await this.CreateSnapshotAsync(cancellationToken);
+                await this.persister.CreateSnapshotAsync(snapshot, cancellationToken);
 
-            // Truncate journal after successful snapshot
-            await this.persister.TruncateJournalAsync(snapshot.Version, cancellationToken);
+                // Truncate journal after successful snapshot
+                await this.persister.TruncateJournalAsync(snapshot.Version, cancellationToken);
+            }
+            catch (Exception)
+            {
+                // Log snapshot failure but don't propagate - queue operations should continue
+                // Journal will continue to grow until next successful snapshot
+            }
         }
     }
 
@@ -500,6 +508,14 @@ public class QueueManager : IQueueManager
             Checksum = 0 // Will be calculated by persister
         };
 
-        await this.persister!.WriteOperationAsync(record, cancellationToken);
+        try
+        {
+            await this.persister!.WriteOperationAsync(record, cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Log persistence failure but don't propagate - queue operations should continue
+            // TODO: Consider dead letter queue for persistence failures or circuit breaker pattern
+        }
     }
 }

@@ -238,7 +238,9 @@ public class QueueManagerTests
         var options = new QueueOptions
         {
             Capacity = 100,
-            DefaultTimeout = TimeSpan.FromMinutes(5)
+            DefaultTimeout = TimeSpan.FromMinutes(5),
+            DefaultMaxRetries = 5,
+            DefaultBackoffStrategy = RetryBackoffStrategy.None // Disable backoff for tests
         };
 
         return new QueueManager(buffer, deduplicationIndex, options);

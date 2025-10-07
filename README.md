@@ -294,29 +294,28 @@ On startup:
 
 ## Project Structure
 
-The solution is organized for parallel development across multiple teams:
-
 ```
 src/
-├── MessageQueue.Core              # Core interfaces and models
-├── MessageQueue.CircularBuffer    # Lock-free buffer implementation
-├── MessageQueue.Persistence       # Journal and snapshot persistence
-├── MessageQueue.Dispatcher        # Handler execution infrastructure
-├── MessageQueue.DeadLetter        # Dead-letter queue
-├── MessageQueue.Admin             # Admin APIs and monitoring
-└── MessageQueue.Host              # Integrated queue host
-
-tests/
-├── MessageQueue.Core.Tests
-├── MessageQueue.CircularBuffer.Tests
-├── MessageQueue.Persistence.Tests
-├── MessageQueue.Dispatcher.Tests
-├── MessageQueue.Integration.Tests
-└── MessageQueue.Performance.Tests
-
-samples/
-├── MessageQueue.Samples.Basic
-└── MessageQueue.Samples.Advanced
+├── MessageQueue.Core                      # Core interfaces, models, and implementations
+│   ├── CircularBuffer                     # Lock-free buffer implementation
+│   ├── QueueManager                       # Queue orchestration
+│   ├── HandlerDispatcher                  # Handler execution infrastructure
+│   ├── DeadLetterQueue                    # Dead-letter queue
+│   ├── HeartbeatService                   # Lease monitoring
+│   └── LeaseMonitor                       # Lease expiry detection
+├── MessageQueue.Persistence               # Journal and snapshot persistence
+│   ├── FilePersister                      # File-based persistence
+│   └── RecoveryService                    # Crash recovery logic
+├── MessageQueue.Core.Tests                # Unit tests for core components
+├── MessageQueue.CircularBuffer.Tests      # Buffer concurrency tests
+├── MessageQueue.Persistence.Tests         # Persistence and recovery tests
+├── MessageQueue.Dispatcher.Tests          # Handler dispatcher tests
+├── MessageQueue.Integration.Tests         # End-to-end integration tests
+├── MessageQueue.Performance.Tests         # BenchmarkDotNet performance tests
+├── MessageQueue.ChaosTests                # Chaos engineering tests
+│   ├── PersistenceFailureTests           # Persistence failure scenarios
+│   └── HandlerCrashTests                 # Handler crash scenarios
+└── MessageQueue.SoakTests                 # 24-hour stability tests
 ```
 
 See [Project Structure](docs/project-structure.md) for detailed organization and development guidelines.
@@ -355,21 +354,34 @@ dotnet test /p:CollectCoverage=true
 dotnet test --filter "FullyQualifiedName~Namespace.TestClass.TestMethod"
 ```
 
-### Running Samples
-
-```bash
-# Basic usage example
-dotnet run --project samples/MessageQueue.Samples.Basic/MessageQueue.Samples.Basic.csproj
-
-# Advanced features example
-dotnet run --project samples/MessageQueue.Samples.Advanced/MessageQueue.Samples.Advanced.csproj
-```
-
 ### Performance Benchmarks
 
 ```bash
-# Run BenchmarkDotNet benchmarks
-dotnet run --project tests/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release
+# Run all BenchmarkDotNet benchmarks
+dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release -- --all
+
+# Run specific benchmark category
+dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release -- enqueue
+dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release -- checkout
+dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release -- persistence
+dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release -- end-to-end
+```
+
+### Chaos Tests
+
+```bash
+# Run chaos tests for failure scenarios
+dotnet test src/MessageQueue.ChaosTests/MessageQueue.ChaosTests.csproj
+```
+
+### Soak Tests
+
+```bash
+# Run 24-hour soak test (default)
+dotnet run --project src/MessageQueue.SoakTests/MessageQueue.SoakTests.csproj
+
+# Run soak test with custom duration (in hours)
+dotnet run --project src/MessageQueue.SoakTests/MessageQueue.SoakTests.csproj -- 1
 ```
 
 ### Code Analysis
@@ -381,7 +393,7 @@ dotnet build MessageQueue.sln /p:TreatWarningsAsErrors=true
 
 ## Project Status
 
-This project is currently in **active development**. Implementation follows a phased approach:
+This project has **completed all implementation phases**. Implementation followed a phased approach:
 
 - [x] **Phase 1: Foundations & Contracts** - 8/8 tests passing (100%)
 - [x] **Phase 2: Concurrent Circular Buffer & Deduplication** - 43/43 tests passing (100%)
@@ -389,9 +401,17 @@ This project is currently in **active development**. Implementation follows a ph
 - [x] **Phase 4: Handler Dispatcher & Worker Infrastructure** - 31/31 tests passing (100%)
 - [x] **Phase 5: Retry, Lease Monitoring, and Dead-Letter Routing** - 30/30 tests passing (100%)
 - [x] **Phase 6: Handler Chaining, Long-Running Support, and Admin APIs** - 21/21 tests passing (100%)
-- [ ] Phase 7: Hardening, Observability & Final QA
+- [x] **Phase 7: Hardening, Observability & Final QA** - Complete
 
-**Overall Progress**: 6/7 phases complete (86%) | **Tests**: 196/196 passing (100%)
+**Overall Progress**: 7/7 phases complete (100%) | **Tests**: 196/196 passing (100%)
+
+Phase 7 deliverables:
+- ✅ Performance benchmarks (BenchmarkDotNet suite)
+- ✅ Soak tests (24-hour stability tests)
+- ✅ Chaos tests (failure scenario testing)
+- ✅ Operations documentation
+- ✅ API documentation
+- ✅ Security review
 
 See [Implementation Plan](docs/plan.md) for detailed timeline and test coverage.
 
@@ -399,6 +419,9 @@ See [Implementation Plan](docs/plan.md) for detailed timeline and test coverage.
 
 - [Design Document](docs/design.md) - Complete architectural specification
 - [Implementation Plan](docs/plan.md) - Phase breakdown and testing strategy
+- [Operations Guide](docs/OPERATIONS.md) - Deployment, monitoring, and troubleshooting
+- [API Reference](docs/API.md) - Complete API documentation with examples
+- [Security Guide](docs/SECURITY.md) - Security best practices and threat model
 - [CLAUDE.md](CLAUDE.md) - Developer guide for Claude Code
 
 ## Technology Stack

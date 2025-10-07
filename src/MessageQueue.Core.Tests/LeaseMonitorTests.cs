@@ -31,7 +31,8 @@ public class LeaseMonitorTests
         {
             Capacity = 100,
             DefaultTimeout = TimeSpan.FromSeconds(1),
-            DefaultMaxRetries = 3
+            DefaultMaxRetries = 3,
+            DefaultBackoffStrategy = RetryBackoffStrategy.None // Disable backoff for tests
         };
 
         // For LeaseMonitor tests, we don't need DLQ functionality
@@ -182,7 +183,7 @@ public class LeaseMonitorTests
         msg3.Should().NotBeNull();
 
         // Act - wait for all leases to expire
-        // Wait longer than lease expiry (300ms) + check interval buffer
+        // Wait longer than lease expiry (300ms) + check interval (1s)
         await Task.Delay(2000);
 
         // Assert - all messages should be requeued
