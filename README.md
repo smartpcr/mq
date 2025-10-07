@@ -442,3 +442,7 @@ Copyright © AzureStack Compute
 ## Contributing
 
 This is an internal project. Please refer to the implementation plan for current development priorities.
+
+## Release Process
+
+See [docs/release-guide.md](docs/release-guide.md) for step-by-step instructions on cutting a release via the CI pipeline, including version preparation, tag creation, and package publishing.
