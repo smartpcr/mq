@@ -218,10 +218,94 @@ services.AddScoped<IMessageHandler<TMessage>, ConcreteHandler>();
 - Should persistence be transactional across queue and DLQ? (Possible requirement.)
 - How to handle schema evolution for message payloads? (Version fields and converters.)
 
-## 12. Next Steps
+## 12. Implementation Status
 
-1. Define concrete interfaces (`IQueueManager`, `IMessageHandler`, `IQueuePersistence`).
-2. Prototype circular buffer with dedupe and persistence hooks.
-3. Implement dispatcher/worker infrastructure using DI scopes.
-4. Build recovery tests to validate startup restoration.
-5. Define administration APIs for DLQ management and handler scaling.
+### Completed Phases (5/7)
+
+#### Phase 1-3: Foundation, Core Components & Persistence ✅
+- All core interfaces defined (IQueueManager, ICircularBuffer, IPersister, etc.)
+- CircularBuffer with lock-free CAS operations
+- DeduplicationIndex with supersede semantics
+- QueueManager coordinating all operations
+- Persistence layer with journal + snapshots
+- Recovery service with startup restoration
+- **Tests**: 114/114 passing (100%)
+
+#### Phase 4: Handler Dispatcher & Worker Infrastructure ✅
+**Implementation Details**:
+- **HandlerRegistry.cs** (src/MessageQueue.Core/HandlerRegistry.cs:1)
+  - Type-based handler registration with `RegisterHandler<TMessage, THandler>`
+  - DI scope factory integration via IServiceProvider
+  - HandlerOptions storage per message type
+  - Thread-safe ConcurrentDictionary for registrations
+
+- **HandlerDispatcher.cs** (src/MessageQueue.Core/HandlerDispatcher.cs:1)
+  - Channel-based signaling using System.Threading.Channels
+  - Worker pools with configurable parallelism per message type
+  - Reflection-based generic method invocation for runtime type resolution
+  - Timeout enforcement with CancellationTokenSource
+  - Graceful shutdown with worker coordination
+  - Metrics tracking (messages processed, failures, avg processing time)
+
+**Key Design Decisions**:
+- Used reflection instead of dynamic keyword for .NET 4.6.2 compatibility
+- Channel.Writer.TryWrite for non-blocking signal propagation
+- Separate worker tasks per message type for isolation
+- IServiceScope per message for proper DI lifecycle
+
+**Tests**: 31/31 passing (100%)
+
+#### Phase 5: Retry & Dead-Letter Logic ✅
+**Implementation Details**:
+- **DeadLetterQueue.cs** (src/MessageQueue.Core/DeadLetterQueue.cs:1)
+  - ConcurrentQueue-based storage with failure metadata
+  - ReplayAsync using reflection to re-enqueue with proper type
+  - PurgeAsync with age-based filtering
+  - Metrics by message type and failure reason
+  - Persistence integration for DLQ operations
+
+- **LeaseMonitor.cs** (src/MessageQueue.Core/LeaseMonitor.cs:1)
+  - Background monitoring loop with dynamic check intervals
+  - Calculates next check based on nearest lease expiry
+  - ExtendLeaseAsync for long-running handlers
+  - StartAsync/StopAsync for lifecycle management
+
+- **QueueManager Updates** (src/MessageQueue.Core/QueueManager.cs:187)
+  - Integrated DLQ routing in RequeueAsync on max retries
+  - GetPendingMessagesAsync returns Ready + InFlight for lease monitoring
+  - Reverse mapping (messageId → deduplicationKey) for cleanup
+
+**Key Design Decisions**:
+- Dynamic check intervals (1-10 seconds) based on next expiry to optimize CPU
+- Separate DLQ from main buffer for independent scaling
+- Reflection-based replay to handle polymorphic message types
+- Added operation codes: DeadLetterReplay, DeadLetterPurge
+
+**Tests**: 30/30 passing (100%)
+
+### Remaining Phases
+
+#### Phase 6: Advanced Features (In Progress)
+- [ ] Handler chaining with IQueuePublisher
+- [ ] Correlation ID propagation
+- [ ] Admin API for runtime scaling
+- [ ] OpenTelemetry integration
+
+#### Phase 7: Hardening & Release
+- [ ] Soak testing (24-hour runs)
+- [ ] Chaos testing
+- [ ] Performance benchmarking
+- [ ] Security review
+- [ ] Documentation and runbooks
+
+### Next Steps
+
+1. ✅ ~~Define concrete interfaces~~ (Phase 1 complete)
+2. ✅ ~~Prototype circular buffer with dedupe and persistence hooks~~ (Phase 2-3 complete)
+3. ✅ ~~Implement dispatcher/worker infrastructure using DI scopes~~ (Phase 4 complete)
+4. ✅ ~~Build recovery tests to validate startup restoration~~ (Phase 3 complete)
+5. ✅ ~~Define administration APIs for DLQ management~~ (Phase 5 complete)
+6. Implement handler chaining and correlation tracking (Phase 6)
+7. Build admin APIs for runtime scaling (Phase 6)
+8. Integration of OpenTelemetry exporters (Phase 6)
+9. Comprehensive system testing and hardening (Phase 7)

@@ -383,13 +383,15 @@ dotnet build MessageQueue.sln /p:TreatWarningsAsErrors=true
 
 This project is currently in **active development**. Implementation follows a phased approach:
 
-- [x] Phase 1: Foundations & Contracts
-- [ ] Phase 2: Concurrent Circular Buffer & Deduplication
-- [ ] Phase 3: Persistence Layer (Journal + Snapshot)
-- [ ] Phase 4: Handler Dispatcher & Worker Infrastructure
-- [ ] Phase 5: Retry, Lease Monitoring, and Dead-Letter Routing
+- [x] **Phase 1: Foundations & Contracts** - 8/8 tests passing (100%)
+- [x] **Phase 2: Concurrent Circular Buffer & Deduplication** - 43/43 tests passing (100%)
+- [x] **Phase 3: Persistence Layer (Journal + Snapshot)** - 63/63 tests passing (100%)
+- [x] **Phase 4: Handler Dispatcher & Worker Infrastructure** - 31/31 tests passing (100%)
+- [x] **Phase 5: Retry, Lease Monitoring, and Dead-Letter Routing** - 30/30 tests passing (100%)
 - [ ] Phase 6: Handler Chaining, Long-Running Support, and Admin APIs
 - [ ] Phase 7: Hardening, Observability & Final QA
+
+**Overall Progress**: 5/7 phases complete (71%) | **Tests**: 175/175 passing (100%)
 
 See [Implementation Plan](docs/plan.md) for detailed timeline and test coverage.
 

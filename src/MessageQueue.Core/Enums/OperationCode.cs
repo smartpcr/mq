@@ -43,5 +43,15 @@ public enum OperationCode
     /// <summary>
     /// Requeue operation - message returned to Ready state
     /// </summary>
-    Requeue = 8
+    Requeue = 8,
+
+    /// <summary>
+    /// DeadLetterReplay operation - message replayed from DLQ to main queue
+    /// </summary>
+    DeadLetterReplay = 9,
+
+    /// <summary>
+    /// DeadLetterPurge operation - messages purged from DLQ
+    /// </summary>
+    DeadLetterPurge = 10
 }
