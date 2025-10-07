@@ -300,6 +300,46 @@ public class QueueManager : IQueueManager
     }
 
     /// <summary>
+    /// Creates a snapshot of the current queue state for persistence.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Queue snapshot containing all state.</returns>
+    public async Task<QueueSnapshot> CreateSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        var allMessages = await _buffer.GetAllMessagesAsync(cancellationToken);
+        var deduplicationSnapshot = await _deduplicationIndex.GetSnapshotAsync(cancellationToken);
+
+        var snapshot = new QueueSnapshot
+        {
+            Version = Interlocked.Read(ref _sequenceNumber),
+            CreatedAt = DateTime.UtcNow,
+            Capacity = _buffer.Capacity,
+            MessageCount = allMessages.Length,
+            Messages = allMessages.ToList(),
+            DeduplicationIndex = deduplicationSnapshot,
+            DeadLetterMessages = new List<DeadLetterEnvelope>() // Phase 5
+        };
+
+        return snapshot;
+    }
+
+    /// <summary>
+    /// Triggers a snapshot if persistence conditions are met.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task CheckAndCreateSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        if (_persister != null && _persister.ShouldSnapshot())
+        {
+            var snapshot = await CreateSnapshotAsync(cancellationToken);
+            await _persister.CreateSnapshotAsync(snapshot, cancellationToken);
+
+            // Truncate journal after successful snapshot
+            await _persister.TruncateJournalAsync(snapshot.Version, cancellationToken);
+        }
+    }
+
+    /// <summary>
     /// Creates a message envelope from a message object.
     /// </summary>
     private MessageEnvelope CreateEnvelope<T>(T message, string? deduplicationKey, string? correlationId)
