@@ -38,7 +38,12 @@
       "Bash(tee:*)",
       "Bash(while ps aux)",
       "Bash(do sleep:*)",
-      "Bash(dotnet pack:*)"
+      "Bash(dotnet pack:*)",
+      "Bash(git fetch:*)",
+      "Bash(git fsck:*)",
+      "Bash(git cat-file:*)",
+      "Bash(git gc:*)",
+      "Bash(dotnet build-server:*)"
     ],
     "deny": [],
     "ask": []
