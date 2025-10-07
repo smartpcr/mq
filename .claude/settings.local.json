@@ -23,7 +23,11 @@
       "Bash(sudo apt install:*)",
       "Bash(gh:*)",
       "Bash(git commit:*)",
-      "Bash(dotnet clean:*)"
+      "Bash(dotnet clean:*)",
+      "Bash(for:*)",
+      "Bash(do echo \"=== $dir ===\")",
+      "Bash(ls:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

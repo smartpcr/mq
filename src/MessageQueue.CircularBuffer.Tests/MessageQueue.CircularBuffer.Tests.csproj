@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MessageQueue.CircularBuffer\MessageQueue.CircularBuffer.csproj" />
+    <ProjectReference Include="..\MessageQueue.Core\MessageQueue.Core.csproj" />
   </ItemGroup>
 
 </Project>
