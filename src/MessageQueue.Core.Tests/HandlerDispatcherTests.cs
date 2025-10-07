@@ -34,7 +34,7 @@ public class HandlerDispatcherTests
         this.serviceProvider = services.BuildServiceProvider();
         this.scopeFactory = this.serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
-        // Create queue manager with in-memory buffer
+        // Create queue manager with in-memory buffer (without dispatcher initially)
         var buffer = new CircularBuffer(100);
         var dedupIndex = new DeduplicationIndex();
         var queueOptions = new QueueOptions
@@ -45,8 +45,12 @@ public class HandlerDispatcherTests
         };
         this.queueManager = new QueueManager(buffer, dedupIndex, queueOptions);
 
+        // Create dispatcher and wire it to queue manager
         this.handlerRegistry = new HandlerRegistry(this.serviceProvider);
         this.dispatcher = new HandlerDispatcher(this.queueManager, this.handlerRegistry, this.scopeFactory);
+
+        // Set dispatcher on queue manager for auto-signaling
+        this.queueManager.SetDispatcher(this.dispatcher);
     }
 
     [TestCleanup]
@@ -125,6 +129,67 @@ public class HandlerDispatcherTests
         // Assert - message should be checked out
         var metrics = await this.queueManager.GetMetricsAsync();
         metrics.InFlightCount.Should().BeGreaterOrEqualTo(0); // May be 0 if processed quickly or 1 if still in flight
+
+        await this.dispatcher.StopAsync();
+    }
+
+    [TestMethod]
+    public async Task EnqueueAsync_AutomaticallySignalsDispatcher()
+    {
+        // Arrange - Register handler with unbounded channel mode
+        this.handlerRegistry.RegisterHandler<TestMessage, TestMessageHandler>(new HandlerOptions<TestMessage>
+        {
+            MinParallelism = 1,
+            MaxParallelism = 5,
+            Timeout = TimeSpan.FromSeconds(30),
+            LeaseDuration = TimeSpan.FromMinutes(1),
+            ChannelMode = Options.ChannelMode.Unbounded
+        });
+
+        await this.dispatcher.StartAsync();
+
+        // Act - Enqueue message WITHOUT manual signaling
+        var messageId = await this.queueManager.EnqueueAsync(new TestMessage { Content = "Auto-signal test" });
+
+        // Give worker time to process
+        await Task.Delay(200);
+
+        // Assert - message should be processed automatically via auto-signal
+        var stats = await this.dispatcher.GetStatisticsAsync(typeof(TestMessage));
+        stats.TotalProcessed.Should().BeGreaterThan(0, "message should be auto-processed without manual signal");
+
+        await this.dispatcher.StopAsync();
+    }
+
+    [TestMethod]
+    public async Task EnqueueAsync_WithBoundedCoalescingChannel_ProcessesMessages()
+    {
+        // Arrange - Register handler with bounded coalescing channel mode and multiple workers
+        this.handlerRegistry.RegisterHandler<TestMessage, TestMessageHandler>(new HandlerOptions<TestMessage>
+        {
+            MinParallelism = 3, // More workers to process messages in parallel
+            MaxParallelism = 5,
+            Timeout = TimeSpan.FromSeconds(30),
+            LeaseDuration = TimeSpan.FromMinutes(1),
+            ChannelMode = Options.ChannelMode.BoundedCoalescing
+        });
+
+        await this.dispatcher.StartAsync();
+
+        // Act - Enqueue multiple messages with small delays to allow processing
+        for (int i = 0; i < 5; i++)
+        {
+            await this.queueManager.EnqueueAsync(new TestMessage { Content = $"Message {i}" });
+            await Task.Delay(50); // Small delay to allow workers to pick up messages
+        }
+
+        // Give workers time to process remaining messages
+        await Task.Delay(500);
+
+        // Assert - all messages should eventually be processed
+        // With bounded coalescing, signals may coalesce but workers will loop and checkout remaining messages
+        var stats = await this.dispatcher.GetStatisticsAsync(typeof(TestMessage));
+        stats.TotalProcessed.Should().Be(5, "all messages should be processed even with bounded coalescing channel");
 
         await this.dispatcher.StopAsync();
     }

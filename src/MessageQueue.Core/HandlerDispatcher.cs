@@ -199,12 +199,30 @@ namespace MessageQueue.Core
         {
             var minParallelism = this.GetMinParallelism(registration);
 
-            // Create signal channel for this message type
-            var channel = Channel.CreateUnbounded<bool>(new UnboundedChannelOptions
+            // Create signal channel for this message type based on configuration
+            var channelMode = this.GetChannelMode(registration);
+            Channel<bool> channel;
+
+            if (channelMode == Options.ChannelMode.BoundedCoalescing)
             {
-                SingleReader = false,
-                SingleWriter = false
-            });
+                // Bounded channel with capacity 1 - signals coalesce
+                channel = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
+                {
+                    SingleReader = false,
+                    SingleWriter = false,
+                    FullMode = BoundedChannelFullMode.DropWrite
+                });
+            }
+            else
+            {
+                // Unbounded channel - signals accumulate
+                channel = Channel.CreateUnbounded<bool>(new UnboundedChannelOptions
+                {
+                    SingleReader = false,
+                    SingleWriter = false
+                });
+            }
+
             this.signalChannels[messageType] = channel;
 
             // Create metrics tracker
@@ -386,6 +404,13 @@ namespace MessageQueue.Core
             var optionsType = registration.Options.GetType();
             var property = optionsType.GetProperty("Timeout");
             return (TimeSpan)property.GetValue(registration.Options);
+        }
+
+        private Options.ChannelMode GetChannelMode(HandlerRegistration registration)
+        {
+            var optionsType = registration.Options.GetType();
+            var property = optionsType.GetProperty("ChannelMode");
+            return (Options.ChannelMode)property.GetValue(registration.Options);
         }
 
         private class WorkerPool

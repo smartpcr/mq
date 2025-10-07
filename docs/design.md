@@ -133,9 +133,11 @@ services.AddScoped<IMessageHandler<TMessage>, ConcreteHandler>();
 
 ### 4.6 Immediate Dispatch Without Timer Jobs
 
-- Use a semaphore or channel-based signaling. When a message becomes `Ready`, enqueue a token into an `AsyncAutoResetEvent`/`Channel`. The dispatcher awaits this signal and immediately dequeues messages.
+- Use channel-based signaling (`System.Threading.Channels`) instead of timer-based polling for message dispatch.
 - Each handler type has a dedicated worker loop running as a `Task` scheduled on thread pool. Workers block on the channel (no busy-wait) and awaken instantly when new messages arrive.
 - Scaling is managed by spawning `MaxParallelism` worker tasks per handler type.
+
+For detailed rationale, see **Section 13: Channel-Based Signaling vs. Timer-Based Polling**.
 
 ### 4.7 Long-Running Handler Support
 
@@ -336,3 +338,98 @@ services.AddScoped<IMessageHandler<TMessage>, ConcreteHandler>();
 7. Build admin APIs for runtime scaling (Phase 6)
 8. Integration of OpenTelemetry exporters (Phase 6)
 9. Comprehensive system testing and hardening (Phase 7)
+
+## 13. Channel-Based Signaling vs. Timer-Based Polling
+
+### Architecture
+
+The dispatcher uses **channel-based signaling** via `System.Threading.Channels` to wake worker loops immediately when messages become ready, eliminating the need for periodic polling timers.
+
+**Implementation** (HandlerDispatcher.cs:203-281):
+1. Each message type gets an unbounded `Channel<bool>` at startup
+2. Worker loops await `channel.Reader.WaitToReadAsync()` (blocks until signal available)
+3. `SignalMessageReady(Type)` calls `channel.Writer.TryWrite(true)` (non-blocking)
+4. Workers wake instantly, consume signal, checkout message, and process
+
+### Why Channels Are Superior to Timer-Based Polling
+
+#### 1. **Zero Idle CPU Usage**
+- **Channels**: Workers block on async I/O primitives (OS-level `WaitHandle`/`TaskCompletionSource`), consuming **zero CPU** when idle
+- **Timers**: Periodic wake-ups (e.g., every 100ms) waste CPU even when queue is empty
+
+#### 2. **Sub-Millisecond Latency**
+- **Channels**: Message enqueue → worker wake-up latency is **1-10 microseconds** (async I/O scheduler overhead)
+- **Timers**: Average latency is `pollInterval / 2` (e.g., 50ms average for 100ms polling)
+
+#### 3. **Automatic Backpressure Handling**
+- **Channels (unbounded)**: Signals accumulate if workers are busy; extra signals just trigger redundant checkout attempts (which return `null` harmlessly)
+- **Channels (bounded)**: Can configure `BoundedChannelFullMode.DropWrite` to coalesce signals (only one wake-up needed regardless of enqueue rate)
+- **Timers**: No inherent backpressure mechanism; can poll even when queue is saturated
+
+#### 4. **Elastic Resource Usage**
+- **Channels**: No background threads or timer allocations; uses existing thread-pool for continuations
+- **Timers**: Each timer requires `System.Threading.Timer` object and scheduled callbacks
+
+#### 5. **Task Scheduler Integration**
+- **Channels**: `WaitToReadAsync()` returns `ValueTask<bool>` with async/await support, respecting `SynchronizationContext` and `TaskScheduler.Current`
+- **Timers**: Callback-based, requiring manual marshalling to async context
+
+### Potential Delays
+
+The only delays are:
+1. **Thread-pool starvation**: If all worker threads are busy, wake-up can be delayed until a thread becomes available (mitigated by `ThreadPool.SetMinThreads`)
+2. **Async scheduler overhead**: ~1-10μs to resume the awaited task (negligible)
+
+### Signal Accumulation Behavior
+
+**Current Implementation (Unbounded Channel)**:
+```csharp
+var channel = Channel.CreateUnbounded<bool>(new UnboundedChannelOptions {
+    SingleReader = false,
+    SingleWriter = false
+});
+```
+
+**Timeline Example**:
+```
+T0: Enqueue A → TryWrite(true) → channel = [signal]
+T1: Worker wakes, reads signal, processes A (slow operation)
+T2: Enqueue B → TryWrite(true) → channel = [signal]
+T3: Enqueue C → TryWrite(true) → channel = [signal, signal]
+T4: Worker finishes A, reads signal, checkouts B
+T5: Worker loops, reads signal, checkouts C
+```
+
+**Key Points**:
+- Each signal is a **generic "work available" notification**, not tied to a specific message
+- Workers consume signals one-by-one and attempt checkout; if queue is empty, checkout returns `null`
+- Extra signals are harmless (minimal memory overhead: 1 byte per boolean)
+
+**Alternative (Bounded Channel with Signal Coalescing)**:
+```csharp
+var channel = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) {
+    FullMode = BoundedChannelFullMode.DropWrite
+});
+```
+- First signal: channel = `[true]`
+- Subsequent signals while full: dropped (coalesced)
+- Worker wakes once, loops until checkout returns `null`
+- **More efficient** (fewer wasted checkout calls), but current unbounded approach prioritizes simplicity
+
+### Current Gap (Integration Issue)
+
+**Problem** (docs/phase5-6-evaluation.md:16):
+- `QueueManager.EnqueueAsync()` does **not** call `SignalMessageReady()`
+- All tests manually signal after enqueue
+- Workers remain idle unless externally notified
+
+**Solution**:
+- `QueueManager` should hold reference to `IHandlerDispatcher`
+- Auto-signal on successful enqueue: `dispatcher.SignalMessageReady(typeof(TMessage))`
+- Enables true "push" semantics without external coordination
+
+### References
+
+- Implementation: src/MessageQueue.Core/HandlerDispatcher.cs:93-281
+- Interface: src/MessageQueue.Core/Interfaces/IHandlerDispatcher.cs:36
+- Tests: src/MessageQueue.Core.Tests/HandlerDispatcherTests.cs:103-123

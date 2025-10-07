@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using MessageQueue.Core;
+using MessageQueue.Core.Enums;
 using MessageQueue.Core.Interfaces;
 using MessageQueue.Core.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -32,7 +33,8 @@ public class DeadLetterQueueIntegrationTests
         {
             Capacity = 100,
             DefaultTimeout = TimeSpan.FromMinutes(5),
-            DefaultMaxRetries = 3
+            DefaultMaxRetries = 3,
+            DefaultBackoffStrategy = RetryBackoffStrategy.None // Disable backoff for predictable testing
         };
 
         // Create queue manager first without DLQ
@@ -40,6 +42,9 @@ public class DeadLetterQueueIntegrationTests
 
         // Create DLQ with the queue manager
         this.dlq = new DeadLetterQueue(this.queueManager, this.options);
+
+        // Set DLQ on queue manager to resolve circular dependency
+        this.queueManager.SetDeadLetterQueue(this.dlq);
 
         this.leaseMonitor = new LeaseMonitor(this.queueManager, this.options);
     }
@@ -151,18 +156,24 @@ public class DeadLetterQueueIntegrationTests
 
         var messageId = await this.queueManager.EnqueueAsync("Test message");
 
-        // Act - simulate lease expiry cycles until max retries
+        // Act - simulate lease expiry cycles until max retries (need 4 cycles for MaxRetries=3)
         for (int i = 0; i < 4; i++)
         {
-            var checkedOut = await this.queueManager.CheckoutAsync<string>($"worker-{i}", TimeSpan.FromMilliseconds(300));
+            var checkedOut = await this.queueManager.CheckoutAsync<string>($"worker-{i}", TimeSpan.FromMilliseconds(500));
             if (checkedOut == null)
+            {
+                // Message already moved to DLQ, exit loop
                 break;
+            }
 
-            // Wait for lease to expire
-            await Task.Delay(800);
+            // Wait for lease to expire and monitor to process (500ms lease + buffer)
+            await Task.Delay(2000);
+
+            // Manually trigger lease check to ensure timely processing
+            await this.leaseMonitor.CheckExpiredLeasesAsync();
         }
 
-        // Additional wait for monitor to process
+        // Additional wait for any pending operations
         await Task.Delay(500);
 
         // Assert

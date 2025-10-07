@@ -27,7 +27,10 @@
       "Bash(for:*)",
       "Bash(do echo \"=== $dir ===\")",
       "Bash(ls:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(do rm -rf \"$dir\")",
+      "Bash(xargs cat:*)",
+      "Read(//home/xiaodoli/.nuget/NuGet/**)"
     ],
     "deny": [],
     "ask": []

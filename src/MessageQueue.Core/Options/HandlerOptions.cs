@@ -66,6 +66,27 @@ public class HandlerOptions<T>
     /// Maximum backoff delay
     /// </summary>
     public TimeSpan MaxBackoff { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Channel signaling mode for worker notification
+    /// </summary>
+    public ChannelMode ChannelMode { get; set; } = ChannelMode.Unbounded;
+}
+
+/// <summary>
+/// Channel signaling mode
+/// </summary>
+public enum ChannelMode
+{
+    /// <summary>
+    /// Unbounded channel - signals accumulate (simpler, minimal overhead)
+    /// </summary>
+    Unbounded,
+
+    /// <summary>
+    /// Bounded channel with capacity 1 - signals coalesce (more efficient, fewer checkout attempts)
+    /// </summary>
+    BoundedCoalescing
 }
 
 /// <summary>

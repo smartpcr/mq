@@ -39,8 +39,8 @@ public class HandlerCrashTests
 
         var serviceProvider = services.BuildServiceProvider();
         var registry = new HandlerRegistry(serviceProvider);
-        registry.RegisterHandler<TestMessage, CrashingHandler>(
-            serviceProvider.GetRequiredService<HandlerOptions<TestMessage>>());
+        var handlerOptions = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HandlerOptions<TestMessage>>>().Value;
+        registry.RegisterHandler<TestMessage, CrashingHandler>(handlerOptions);
 
         var dispatcher = new HandlerDispatcher(queueManager, registry, serviceProvider.GetRequiredService<IServiceScopeFactory>());
 
@@ -86,8 +86,8 @@ public class HandlerCrashTests
 
         var serviceProvider = services.BuildServiceProvider();
         var registry = new HandlerRegistry(serviceProvider);
-        registry.RegisterHandler<TestMessage, AlwaysFailingHandler>(
-            serviceProvider.GetRequiredService<HandlerOptions<TestMessage>>());
+        var handlerOptions = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HandlerOptions<TestMessage>>>().Value;
+        registry.RegisterHandler<TestMessage, AlwaysFailingHandler>(handlerOptions);
 
         var dispatcher = new HandlerDispatcher(queueManager, registry, serviceProvider.GetRequiredService<IServiceScopeFactory>());
 
@@ -133,8 +133,8 @@ public class HandlerCrashTests
 
         var serviceProvider = services.BuildServiceProvider();
         var registry = new HandlerRegistry(serviceProvider);
-        registry.RegisterHandler<TestMessage, SlowHandler>(
-            serviceProvider.GetRequiredService<HandlerOptions<TestMessage>>());
+        var slowHandlerOptions = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HandlerOptions<TestMessage>>>().Value;
+        registry.RegisterHandler<TestMessage, SlowHandler>(slowHandlerOptions);
 
         var dispatcher = new HandlerDispatcher(queueManager, registry, serviceProvider.GetRequiredService<IServiceScopeFactory>());
 

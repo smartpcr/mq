@@ -102,6 +102,18 @@ public interface IQueueManager
     /// </summary>
     /// <param name="sequenceNumber">The sequence number to set</param>
     void SetSequenceNumber(long sequenceNumber);
+
+    /// <summary>
+    /// Sets the dead-letter queue (used to resolve circular dependency during initialization).
+    /// </summary>
+    /// <param name="deadLetterQueue">The dead-letter queue instance.</param>
+    void SetDeadLetterQueue(IDeadLetterQueue deadLetterQueue);
+
+    /// <summary>
+    /// Sets the handler dispatcher (used to resolve circular dependency during initialization).
+    /// </summary>
+    /// <param name="dispatcher">The handler dispatcher instance.</param>
+    void SetDispatcher(IHandlerDispatcher dispatcher);
 }
 
 /// <summary>

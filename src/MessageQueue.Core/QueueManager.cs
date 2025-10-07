@@ -25,7 +25,8 @@ public class QueueManager : IQueueManager
     private readonly ICircularBuffer buffer;
     private readonly DeduplicationIndex deduplicationIndex;
     private readonly IPersister? persister;
-    private readonly IDeadLetterQueue? deadLetterQueue;
+    private IDeadLetterQueue? deadLetterQueue;
+    private IHandlerDispatcher? dispatcher;
     private readonly QueueOptions options;
     private long sequenceNumber;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, string> messageIdToDeduplicationKey;
@@ -38,18 +39,21 @@ public class QueueManager : IQueueManager
     /// <param name="options">Queue configuration options.</param>
     /// <param name="persister">Optional persister for WAL and snapshots.</param>
     /// <param name="deadLetterQueue">Optional dead-letter queue for failed messages.</param>
+    /// <param name="dispatcher">Optional handler dispatcher for automatic signaling.</param>
     public QueueManager(
         ICircularBuffer buffer,
         DeduplicationIndex deduplicationIndex,
         QueueOptions options,
         IPersister persister = null,
-        IDeadLetterQueue deadLetterQueue = null)
+        IDeadLetterQueue deadLetterQueue = null,
+        IHandlerDispatcher dispatcher = null)
     {
         this.buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         this.deduplicationIndex = deduplicationIndex ?? throw new ArgumentNullException(nameof(deduplicationIndex));
         this.options = options ?? throw new ArgumentNullException(nameof(options));
         this.persister = persister;
         this.deadLetterQueue = deadLetterQueue;
+        this.dispatcher = dispatcher;
         this.sequenceNumber = 0;
         this.messageIdToDeduplicationKey = new System.Collections.Concurrent.ConcurrentDictionary<Guid, string>();
     }
@@ -87,6 +91,9 @@ public class QueueManager : IQueueManager
                         await this.PersistOperationAsync(OperationCode.Replace, envelope, cancellationToken);
                     }
 
+                    // Signal dispatcher that message is ready
+                    this.dispatcher?.SignalMessageReady(typeof(T));
+
                     return envelope.MessageId;
                 }
                 else
@@ -113,6 +120,9 @@ public class QueueManager : IQueueManager
         {
             await this.PersistOperationAsync(OperationCode.Enqueue, newEnvelope, cancellationToken);
         }
+
+        // Signal dispatcher that message is ready
+        this.dispatcher?.SignalMessageReady(typeof(T));
 
         return newEnvelope.MessageId;
     }
@@ -404,6 +414,18 @@ public class QueueManager : IQueueManager
     public void SetSequenceNumber(long sequenceNumber)
     {
         Interlocked.Exchange(ref this.sequenceNumber, sequenceNumber);
+    }
+
+    /// <inheritdoc/>
+    public void SetDeadLetterQueue(IDeadLetterQueue deadLetterQueue)
+    {
+        this.deadLetterQueue = deadLetterQueue;
+    }
+
+    /// <inheritdoc/>
+    public void SetDispatcher(IHandlerDispatcher dispatcher)
+    {
+        this.dispatcher = dispatcher;
     }
 
     /// <summary>
