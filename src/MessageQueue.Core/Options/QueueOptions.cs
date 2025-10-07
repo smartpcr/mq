@@ -7,6 +7,7 @@
 namespace MessageQueue.Core.Options;
 
 using System.ComponentModel.DataAnnotations;
+using MessageQueue.Core.Trace;
 
 /// <summary>
 /// Global queue configuration options.
@@ -83,4 +84,19 @@ public class QueueOptions
     /// Default maximum backoff delay
     /// </summary>
     public TimeSpan DefaultMaxBackoff { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Telemetry provider (ETW, OpenTelemetry, or Both)
+    /// </summary>
+    public TelemetryProvider TelemetryProvider { get; set; } = TelemetryProvider.OpenTelemetry;
+
+    /// <summary>
+    /// OpenTelemetry OTLP exporter endpoint
+    /// </summary>
+    public string OtlpEndpoint { get; set; } = "http://localhost:4320";
+
+    /// <summary>
+    /// Enable OpenTelemetry OTLP export
+    /// </summary>
+    public bool EnableOtlpExport { get; set; } = true;
 }

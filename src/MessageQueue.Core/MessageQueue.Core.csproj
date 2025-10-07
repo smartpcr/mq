@@ -24,6 +24,8 @@
     <PackageReference Include="System.ComponentModel.Annotations" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="System.Threading.Channels" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
   </ItemGroup>
 
   <ItemGroup>
