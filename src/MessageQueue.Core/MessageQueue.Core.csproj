@@ -2,6 +2,21 @@
 
   <PropertyGroup>
     <Description>Core interfaces, models, and contracts for the Message Queue system</Description>
+
+    <!-- NuGet Package Metadata -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>MessageQueue.Core</PackageId>
+    <Title>MessageQueue Core</Title>
+    <Authors>Microsoft Corp.</Authors>
+    <Company>Microsoft Corp.</Company>
+    <Product>MessageQueue</Product>
+    <PackageTags>messagequeue;queue;concurrent;lock-free;persistence;deduplication</PackageTags>
+    <PackageProjectUrl>https://github.com/microsoft/messagequeue</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/microsoft/messagequeue</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,6 +24,10 @@
     <PackageReference Include="System.ComponentModel.Annotations" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="System.Threading.Channels" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

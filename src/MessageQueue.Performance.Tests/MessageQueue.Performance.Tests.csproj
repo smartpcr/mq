@@ -5,6 +5,15 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <!-- Use net8.0 on Linux/macOS, net462 on Windows -->
+  <PropertyGroup Condition="'$(OS)' == 'Unix'">
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFramework>net462</TargetFramework>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\MessageQueue.Core\MessageQueue.Core.csproj" />
   </ItemGroup>

@@ -23,7 +23,7 @@ Performance benchmarks using BenchmarkDotNet to measure throughput, latency, and
 
 ## Running Benchmarks
 
-```bash
+```cmd
 # Run all benchmarks
 dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release
 
@@ -32,6 +32,12 @@ dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance
 
 # Export results
 dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release --exporters json
+```
+
+on linux, run:
+
+```bash
+sudo dotnet run --project src/MessageQueue.Performance.Tests/MessageQueue.Performance.Tests.csproj -c Release --framework net8.0
 ```
 
 ## Output

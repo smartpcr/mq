@@ -33,7 +33,12 @@
       "Read(//home/xiaodoli/.nuget/NuGet/**)",
       "Bash(do echo \"=== $file ===\")",
       "Bash(awk:*)",
-      "Bash(cut:*)"
+      "Bash(cut:*)",
+      "Bash(dotnet run:*)",
+      "Bash(tee:*)",
+      "Bash(while ps aux)",
+      "Bash(do sleep:*)",
+      "Bash(dotnet pack:*)"
     ],
     "deny": [],
     "ask": []
