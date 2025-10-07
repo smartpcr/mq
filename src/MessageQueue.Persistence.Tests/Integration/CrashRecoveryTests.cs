@@ -219,13 +219,16 @@ public class CrashRecoveryTests
         result.Success.Should().BeTrue();
         result.DeduplicationEntriesRestored.Should().Be(3);
 
-        // Verify dedup index works - duplicate should be rejected
+        // Verify dedup index works - duplicate should supersede existing Ready message
         var queueManager2 = new QueueManager(buffer2, dedup2, _queueOptions, persister2);
         var dupMsgId = await queueManager2.EnqueueAsync("Duplicate", "key-1");
 
-        // Should return existing message ID, not create new
+        // Should supersede existing message - verify new message is present and old is superseded
         var messages = await buffer2.GetAllMessagesAsync();
-        messages.Count(m => m.DeduplicationKey == "key-1").Should().Be(1);
+        var key1Messages = messages.Where(m => m.DeduplicationKey == "key-1").ToList();
+        key1Messages.Count.Should().Be(2); // 1 superseded + 1 new
+        key1Messages.Count(m => m.Status == MessageStatus.Superseded).Should().Be(1);
+        key1Messages.Count(m => m.Status == MessageStatus.Ready).Should().Be(1);
 
         persister2.Dispose();
     }
