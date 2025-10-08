@@ -43,10 +43,8 @@
   </ItemGroup>
 
   <!-- git version -->
-  <ItemGroup>
-    <PackageReference Include="Nerdbank.GitVersioning">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
