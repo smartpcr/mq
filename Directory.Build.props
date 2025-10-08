@@ -42,6 +42,13 @@
     <PackageReference Include="MSTest.TestFramework" />
   </ItemGroup>
 
+  <!-- git version -->
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
     <Owners>$(Authors)</Owners>
     <ID>$(AssemblyName)</ID>
@@ -50,6 +57,7 @@
     <PackageVersion>$(NuGetPackageVersion)</PackageVersion>
     <!-- Assembly info -->
     <Product>MQ</Product>
+    <Authors>xiaodong li</Authors>
     <Company>AzureStack Compute</Company>
     <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
