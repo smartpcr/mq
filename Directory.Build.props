@@ -42,12 +42,16 @@
     <PackageReference Include="MSTest.TestFramework" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
     <Owners>$(Authors)</Owners>
     <ID>$(AssemblyName)</ID>
     <Title>$(AssemblyName)</Title>
     <PackageId>$(AssemblyName)</PackageId>
-    <PackageVersion>$(NuGetPackageVersion)</PackageVersion>
+    <PackageVersion Condition="'$(NuGetPackageVersion)' != ''">$(NuGetPackageVersion)</PackageVersion>
     <!-- Assembly info -->
     <Product>MQ</Product>
     <Company>AzureStack Compute</Company>
