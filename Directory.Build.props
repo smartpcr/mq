@@ -54,7 +54,7 @@
     <ID>$(AssemblyName)</ID>
     <Title>$(AssemblyName)</Title>
     <PackageId>$(AssemblyName)</PackageId>
-    <PackageVersion>$(NuGetPackageVersion)</PackageVersion>
+    <PackageVersion>$(PackageVersion)</PackageVersion>
     <!-- Assembly info -->
     <Product>MQ</Product>
     <Authors>xiaodong li</Authors>
