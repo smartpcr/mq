@@ -10,16 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <!-- Static version information (fallback when Git metadata is unavailable) -->
-    <VersionPrefix>0.5.0</VersionPrefix>
-    <AssemblyVersion>0.5.0.0</AssemblyVersion>
-    <FileVersion>0.5.0.0</FileVersion>
-    <InformationalVersion>0.5.0</InformationalVersion>
 
-    <!-- Assembly info -->
-    <Product>MQ</Product>
-    <Company>AzureStack Compute</Company>
-    <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
 
     <!-- Central package management -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
@@ -57,9 +48,12 @@
     <Title>$(AssemblyName)</Title>
     <PackageId>$(AssemblyName)</PackageId>
     <PackageVersion>$(NuGetPackageVersion)</PackageVersion>
+    <!-- Assembly info -->
+    <Product>MQ</Product>
+    <Company>AzureStack Compute</Company>
+    <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/smartpcr/common</PackageProjectUrl>
-    <Copyright>Copyright 2024</Copyright>
     <RequireLicenseAcceptance>False</RequireLicenseAcceptance>
     <NoPackageAnalysis>True</NoPackageAnalysis>
     <GenerateSymbolPackage>False</GenerateSymbolPackage>
