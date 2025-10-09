@@ -18,7 +18,7 @@ Use the manual workflow whenever you need to cut a new release. The automated bu
 1. Navigate to **Actions → Manual Release** in the repository UI.
 2. Click **Run workflow** and choose the branch or tag to release (default is `main`).
 3. Provide the workflow inputs:
-   - **Release version** – The semantic version to publish (e.g., `1.0.0`). A leading `v` is optional; the workflow normalises it and creates a `v<version>` tag automatically.
+   - **Release version** – The semantic version to publish (e.g., `1.0.0`). Leave this blank to use the version calculated by Nerdbank.GitVersioning. A leading `v` is optional; the workflow normalises it and creates a `v<version>` tag automatically.
    - **Release notes** – Optional Markdown that becomes the GitHub release body. Leave blank to use the default message.
 4. Confirm the run. The workflow executes on an Ubuntu runner and handles the full release lifecycle.
 
