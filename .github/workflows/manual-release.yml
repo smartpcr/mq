@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version (semver, e.g. 1.2.3). A leading v is optional.'
-        required: true
+        description: 'Release version (semver, e.g. 1.2.3). Leave blank to use the Nerdbank.GitVersioning value. A leading v is optional.'
+        required: false
+        default: ''
       release_notes:
         description: 'Optional release notes (Markdown).'
         required: false
@@ -28,26 +29,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Normalize version input
-        id: version
-        run: |
-          set -euo pipefail
-          INPUT="${RELEASE_VERSION_INPUT}"
-          INPUT="$(echo "${INPUT}" | xargs)"
-          INPUT="${INPUT#v}"
-          if [ -z "${INPUT}" ]; then
-            echo "Release version input cannot be empty after normalization." >&2
-            exit 1
-          fi
-          echo "version=${INPUT}" >> "$GITHUB_OUTPUT"
-          echo "tag=v${INPUT}" >> "$GITHUB_OUTPUT"
-          echo "PACKAGE_VERSION=${INPUT}" >> "$GITHUB_ENV"
-          echo "TAG_NAME=v${INPUT}" >> "$GITHUB_ENV"
-
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
+      - name: Determine release version
+        id: version
+        run: |
+          set -euo pipefail
+
+          INPUT="${RELEASE_VERSION_INPUT:-}"
+          INPUT="$(echo "${INPUT}" | xargs || true)"
+          INPUT="${INPUT#v}"
+
+          if [ -z "${INPUT}" ]; then
+            dotnet tool update --global nbgv --version 3.* >/dev/null 2>&1 || dotnet tool install --global nbgv --version 3.*
+            export PATH="$HOME/.dotnet/tools:$PATH"
+            INPUT="$(nbgv get-version -v SemVer2)"
+          fi
+
+          if [ -z "${INPUT}" ]; then
+            echo "Failed to determine release version." >&2
+            exit 1
+          fi
+
+          echo "version=${INPUT}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${INPUT}" >> "$GITHUB_OUTPUT"
+          echo "PACKAGE_VERSION=${INPUT}" >> "$GITHUB_ENV"
+          echo "TAG_NAME=v${INPUT}" >> "$GITHUB_ENV"
 
       - name: Restore dependencies
         run: dotnet restore MessageQueue.sln
